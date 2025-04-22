@@ -4,9 +4,23 @@ import random
 import time
 import os
 import requests
+import cv2
+import numpy as np
+import threading
+import base64
 from datetime import datetime
+from object_detection import ObjectDetector
 
 app = Flask(__name__)
+
+# Initialize the object detector
+object_detector = ObjectDetector()
+
+# For webcam capture if using local camera
+webcam = None
+webcam_lock = threading.Lock()
+webcam_frame = None
+webcam_thread_active = False
 
 # Global state for simulation
 simulation_state = {
@@ -28,7 +42,15 @@ simulation_state = {
         'distance': 3.5,  # Distance in meters (from ultrasonic/ToF sensor)
         'resolution': '640x480',  # Camera resolution
         'framerate': 20,  # Camera framerate
-        'quality': 85  # JPEG quality (0-100)
+        'quality': 85,  # JPEG quality (0-100)
+        'humans_count': 0,  # Number of humans detected
+        'vehicles_count': 0  # Number of vehicles detected
+    },
+    'sensor_history': {
+        'light_trend': 'stable',  # 'increasing', 'decreasing', or 'stable'
+        'light_direction': 1,  # 1 for increasing, -1 for decreasing
+        'last_motion_time': 0,  # timestamp of last motion
+        'distance_trend': 'stable'  # 'approaching', 'receding', or 'stable'
     }
 }
 
@@ -194,49 +216,349 @@ def connect_camera():
 
 @app.route('/camera_stream')
 def camera_stream():
-    """Proxy the ESP32 camera stream"""
+    """Stream the camera with object detection overlays"""
     if not simulation_state['camera_connected']:
         # Return a fallback image or error message if camera is not connected
         return Response(b'Camera not connected', mimetype='text/plain')
     
-    try:
-        # Forward the request to the ESP32 camera
-        resp = requests.get(f'{simulation_state["esp32_camera_url"]}/stream', stream=True, timeout=5)
-        
-        # Stream the response back to the client
-        return Response(
-            resp.iter_content(chunk_size=1024),
-            content_type=resp.headers['content-type']
-        )
-    except:
-        return Response(b'Camera stream error', mimetype='text/plain')
+    def generate_frames():
+        try:
+            # Create a connection to ESP32 camera stream
+            resp = requests.get(f'{simulation_state["esp32_camera_url"]}/stream', stream=True, timeout=5)
+            
+            # Variables for MJPEG parsing
+            boundary = b''
+            for line in resp.iter_lines():
+                if line.startswith(b'--'):
+                    boundary = line
+                    break
+            
+            # Process the stream
+            buffer = b''
+            for chunk in resp.iter_content(chunk_size=1024):
+                buffer += chunk
+                
+                # Find start and end of JPEG in buffer
+                start = buffer.find(b'\xff\xd8')
+                end = buffer.find(b'\xff\xd9')
+                
+                if start != -1 and end != -1:
+                    # Extract JPEG data
+                    jpg_data = buffer[start:end+2]
+                    buffer = buffer[end+2:]
+                    
+                    # Decode the frame
+                    frame = cv2.imdecode(np.frombuffer(jpg_data, dtype=np.uint8), cv2.IMREAD_COLOR)
+                    
+                    if frame is not None:
+                        # Process with object detection
+                        processed_frame, _, _, _ = object_detector.detect_objects(frame)
+                        
+                        # Encode back to JPEG
+                        _, jpeg = cv2.imencode('.jpg', processed_frame)
+                        
+                        # Construct MJPEG packet
+                        mjpeg_packet = (
+                            boundary + b'\r\n' +
+                            b'Content-Type: image/jpeg\r\n' +
+                            b'Content-Length: ' + str(len(jpeg)).encode() + b'\r\n\r\n'
+                        )
+                        mjpeg_packet += jpeg.tobytes() + b'\r\n'
+                        
+                        yield (mjpeg_packet)
+        except Exception as e:
+            print(f"Stream error: {e}")
+            yield b'Error in camera stream'
+    
+    # Return streaming response
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/api/camera_status')
-def camera_status():
-    return jsonify({
-        'connected': simulation_state['camera_connected'],
-        'url': simulation_state['esp32_camera_url']
-    })
-
-@app.route('/api/camera_sensors', methods=['GET'])
-def camera_sensors():
-    """Get sensor data from the ESP32 camera"""
-    if not simulation_state['camera_connected']:
-        return jsonify({'success': False, 'message': 'Camera not connected'})
+@app.route('/api/start_local_camera', methods=['POST'])
+def start_local_camera():
+    """Start local webcam with object detection"""
+    global webcam, webcam_thread_active
     
     try:
-        # In a real implementation, you'd fetch this data from the ESP32
-        # For demo purposes, we'll simulate some sensor readings
-        simulation_state['camera_sensor_data']['light_level'] = random.randint(200, 800)
-        simulation_state['camera_sensor_data']['motion_detected'] = random.random() > 0.7
-        simulation_state['camera_sensor_data']['distance'] = round(1 + random.random() * 5, 2)
+        # Stop any existing webcam
+        if webcam is not None:
+            with webcam_lock:
+                webcam_thread_active = False
+            
+            # Give the thread time to stop
+            time.sleep(0.5)
+            
+            # Release webcam resource
+            webcam.release()
+            webcam = None
         
+        # Initialize webcam with robust error handling
+        camera_id = request.json.get('camera_id', 0)
+        success = False
+        error_msg = ""
+        
+        # Try multiple approaches to open the camera
+        approaches = [
+            # First try the original method with the provided ID
+            lambda: try_open_camera(camera_id),
+            # If that fails, try to convert to integer
+            lambda: try_open_camera(int(camera_id)) if not isinstance(camera_id, int) else None,
+            # If that fails, try default camera (0)
+            lambda: try_open_camera(0),
+            # If that fails, try camera 1 (external webcam on many systems)
+            lambda: try_open_camera(1),
+            # Last resort, try a different backend
+            lambda: try_open_camera(0, cv2.CAP_DSHOW if os.name == 'nt' else cv2.CAP_V4L2)
+        ]
+        
+        for approach_func in approaches:
+            result = approach_func()
+            if result and result['success']:
+                webcam = result['camera']
+                success = True
+                break
+            elif result and result['error']:
+                error_msg += result['error'] + "; "
+        
+        if not success or not webcam or not webcam.isOpened():
+            available_cameras = get_available_cameras()
+            return jsonify({
+                'success': False, 
+                'message': f'Failed to open webcam: {error_msg}',
+                'available_cameras': available_cameras
+            })
+        
+        # Successfully opened camera, set parameters
+        print(f"Successfully opened camera {camera_id}")
+        
+        # Set resolution
+        webcam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        webcam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
+        # Start webcam thread
+        with webcam_lock:
+            webcam_thread_active = True
+        
+        threading.Thread(target=process_webcam, daemon=True).start()
+        
+        return jsonify({'success': True, 'message': 'Local camera started'})
+    
+    except Exception as e:
+        # Detailed error reporting
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error starting camera: {str(e)}\n{error_details}")
+        
+        available_cameras = get_available_cameras()
         return jsonify({
-            'success': True,
-            'sensors': simulation_state['camera_sensor_data']
+            'success': False, 
+            'message': f'Exception: {str(e)}',
+            'available_cameras': available_cameras,
+            'error_details': error_details
         })
+
+def try_open_camera(camera_id, api_preference=None):
+    """Try to open a camera with the given ID and API preference"""
+    try:
+        # Handle long device IDs that can't be converted to integers
+        if isinstance(camera_id, str) and len(camera_id) > 10:
+            print(f"Detected device hash ID, trying numeric index instead: {camera_id[:10]}...")
+            # When we get a long hash ID like 'ac3013a96918c1bf2dea4f04f6f1ece050044aad87822c250199ca78505c3e2d',
+            # ignore it and try camera 0 instead, which is usually the default camera
+            return try_open_camera(0)
+        
+        print(f"Attempting to open camera with ID: {camera_id}, API: {api_preference}")
+        if api_preference:
+            cap = cv2.VideoCapture(camera_id, api_preference)
+        else:
+            cap = cv2.VideoCapture(camera_id)
+            
+        # Check if opened successfully
+        if cap.isOpened():
+            # Read a test frame to confirm it's working
+            ret, frame = cap.read()
+            if ret and frame is not None and frame.size > 0:
+                print(f"Successfully opened and read from camera {camera_id}")
+                return {'success': True, 'camera': cap, 'error': None}
+            else:
+                cap.release()
+                return {'success': False, 'camera': None, 'error': f"Camera {camera_id} opened but could not read frame"}
+        else:
+            return {'success': False, 'camera': None, 'error': f"Could not open camera {camera_id}"}
+    except Exception as e:
+        return {'success': False, 'camera': None, 'error': f"Error with camera {camera_id}: {str(e)}"}
+
+def get_available_cameras():
+    """Check what cameras are available on the system"""
+    available = []
+    # Try the first 5 camera indices
+    for i in range(5):
+        try:
+            cap = cv2.VideoCapture(i)
+            if cap.isOpened():
+                ret, frame = cap.read()
+                if ret:
+                    available.append(i)
+                cap.release()
+        except:
+            pass
+    return available
+
+@app.route('/api/stop_local_camera', methods=['POST'])
+def stop_local_camera():
+    """Stop the local webcam"""
+    global webcam, webcam_thread_active
+    
+    try:
+        # Stop webcam thread
+        with webcam_lock:
+            webcam_thread_active = False
+        
+        # Release webcam if it exists
+        if webcam is not None:
+            webcam.release()
+            webcam = None
+        
+        return jsonify({'success': True, 'message': 'Local camera stopped'})
+    
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)})
 
+@app.route('/local_camera_stream')
+def local_camera_stream():
+    """Stream from local webcam with object detection"""
+    def generate_frames():
+        global webcam_frame
+        
+        while True:
+            # Get latest processed frame
+            with webcam_lock:
+                if webcam_frame is None:
+                    # No frame available
+                    time.sleep(0.1)
+                    continue
+                
+                frame_to_send = webcam_frame.copy()
+            
+            # Encode frame to JPEG
+            _, jpeg = cv2.imencode('.jpg', frame_to_send)
+            
+            # Yield the frame in MJPEG format
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+            
+            # Control frame rate
+            time.sleep(0.033)  # ~30 FPS
+    
+    return Response(generate_frames(),
+                    mimetype='multipart/x-mixed-replace; boundary=frame')
+
+def process_webcam():
+    """Background thread to process webcam frames with object detection"""
+    global webcam, webcam_frame, webcam_thread_active
+    
+    while True:
+        # Check if thread should continue
+        with webcam_lock:
+            if not webcam_thread_active:
+                break
+        
+        # Read frame from webcam
+        if webcam is not None and webcam.isOpened():
+            ret, frame = webcam.read()
+            
+            if ret:
+                # Process frame with object detection
+                processed_frame, humans, vehicles, light = object_detector.detect_objects(frame)
+                
+                # Update the frame
+                with webcam_lock:
+                    webcam_frame = processed_frame
+        
+        # Sleep to control processing rate
+        time.sleep(0.01)
+
+# Initialize app startup
+@app.before_first_request
+def init_app():
+    """Initialize the application"""
+    pass  # Any initialization code can go here
+
+@app.route('/api/detection_stats')
+def get_detection_stats():
+    """Return current detection statistics for the JavaScript frontend"""
+    # Return the counts from the object detector
+    return jsonify({
+        'success': True,
+        'humans_count': object_detector.humans_count,
+        'vehicles_count': object_detector.vehicles_count,
+        'faces_count': object_detector.faces_count,
+        'motion_detected': object_detector.motion_detected,
+        'light_level': object_detector.light_level,
+        'distance': object_detector.closest_distance
+    })
+
+@app.route('/api/camera_status')
+def get_camera_status():
+    """Return current camera connection status"""
+    return jsonify({
+        'connected': simulation_state['camera_connected'],
+        'url': simulation_state['esp32_camera_url'],
+        'sensor_data': object_detector.get_sensor_data()  # Include sensor data with status
+    })
+
+@app.route('/api/camera_sensors')
+def get_camera_sensors():
+    """Return camera sensor data including detection results"""
+    # Get latest data directly from object detector
+    sensor_data = object_detector.get_sensor_data()
+    
+    # Force update human and vehicle counts to latest values
+    sensor_data['humans_count'] = object_detector.humans_count
+    sensor_data['vehicles_count'] = object_detector.vehicles_count
+    
+    # Update distance with closest detected object
+    sensor_data['distance'] = object_detector.closest_distance
+    
+    # Update motion flag
+    sensor_data['motion_detected'] = object_detector.motion_detected
+    
+    # Store the values in simulation state for future use
+    simulation_state['camera_sensor_data'] = sensor_data
+    
+    # Debugging: Print the data to make sure it's working
+    print(f"Sending sensor data: {sensor_data}")
+    
+    return jsonify({
+        'success': True,
+        'sensors': sensor_data
+    })
+
+def find_free_port(start_port=5000, max_attempts=20):
+    """Find a free port starting from start_port"""
+    import socket
+    from contextlib import closing
+    
+    for port in range(start_port, start_port + max_attempts):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            sock.settimeout(1)
+            result = sock.connect_ex(('127.0.0.1', port))
+            if result != 0:  # Port is free
+                return port
+    
+    # If we can't find a free port in the range, try a high random port
+    import random
+    return random.randint(8000, 9000)
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    # Always find a free port first rather than trying default and failing
+    port = find_free_port(start_port=5000, max_attempts=20)
+    
+    # If not using the default port, inform the user
+    if port != 5000:
+        print(f"Port 5000 is already in use (possibly by AirPlay on macOS).")
+        print(f"Using alternative port {port} instead.")
+        print(f"Access the application at: http://localhost:{port}")
+    
+    # Run the app with the selected port
+    app.run(debug=True, host='0.0.0.0', threaded=True, port=port)

@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let cameraConnected = false;
     let localStreamActive = false;
     let localStream = null;
+    let sensorUpdateInterval = null;
     
     // DOM Elements
     const speedControl = document.getElementById('speed-control');
@@ -496,6 +497,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Start sensor updates
                 startSensorUpdates();
+
+                // Start object detection for ESP32 camera
+                if (window.objectDetector) {
+                    window.objectDetector.startDetection();
+                }
             } else {
                 cameraStatus.textContent = 'Connection Failed';
                 cameraStatus.className = 'badge bg-danger';
@@ -545,29 +551,45 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sensor data handling
     function fetchSensorData() {
-        if (localStreamActive) {
-            // Use local camera sensor data
-            updateLocalCameraSensorData();
-            return;
-        }
-        
-        if (!cameraConnected) {
+        if (!cameraConnected && !localStreamActive) {
             sensorStatus.textContent = 'Camera Disconnected';
             sensorStatus.className = 'badge bg-secondary';
             return;
         }
         
-        sensorStatus.textContent = 'Fetching...';
-        sensorStatus.className = 'badge bg-warning';
-        
+        // Make the API call to get sensor data
         fetch('/api/camera_sensors')
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.success && data.sensors) {
+                    console.log("Received sensor data:", data.sensors);
+                    
+                    // Update UI with sensor data
                     updateSensorDisplay(data.sensors);
-                    sensorStatus.textContent = 'Connected';
+                    
+                    // Update status badge
+                    sensorStatus.textContent = 'Live Data';
                     sensorStatus.className = 'badge bg-success';
+                    
+                    // Ensure human and vehicle counts are updated in both places
+                    const humanCountDisplays = document.querySelectorAll('[id="human-count"]');
+                    const vehicleCountDisplays = document.querySelectorAll('[id="vehicle-count"]');
+                    
+                    humanCountDisplays.forEach(element => {
+                        element.textContent = data.sensors.humans_count || 0;
+                    });
+                    
+                    vehicleCountDisplays.forEach(element => {
+                        element.textContent = data.sensors.vehicles_count || 0;
+                    });
+                    
+                    // Update object detector counts if available
+                    if (window.objectDetector) {
+                        window.objectDetector.humanCount = data.sensors.humans_count || 0;
+                        window.objectDetector.vehicleCount = data.sensors.vehicles_count || 0;
+                    }
                 } else {
+                    console.error("Error in sensor data:", data);
                     sensorStatus.textContent = 'Data Error';
                     sensorStatus.className = 'badge bg-danger';
                 }
@@ -576,13 +598,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error fetching sensor data:', error);
                 sensorStatus.textContent = 'Connection Error';
                 sensorStatus.className = 'badge bg-danger';
-                
-                // Simulate sensor data if real data isn't available
-                simulateSensorData();
             });
     }
     
     function updateSensorDisplay(sensors) {
+        console.log("Updating sensor display with:", sensors);
+        
         // Update light level
         if (sensors.light_level !== undefined) {
             const lightPercent = Math.min(100, Math.max(0, sensors.light_level / 10));
@@ -592,13 +613,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Update motion detection
         if (sensors.motion_detected !== undefined) {
-            if (sensors.motion_detected) {
-                motionIndicator.classList.add('active');
-                motionStatus.textContent = 'Motion detected!';
-            } else {
-                motionIndicator.classList.remove('active');
-                motionStatus.textContent = 'No motion';
-            }
+            motionIndicator.classList.toggle('active', sensors.motion_detected);
+            motionStatus.textContent = sensors.motion_detected ? 'Motion detected!' : 'No motion';
         }
         
         // Update distance sensor
@@ -629,25 +645,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function simulateSensorData() {
-        // Generate simulated sensor data for demo purposes
-        const simulatedData = {
-            light_level: Math.floor(Math.random() * 1000),
-            motion_detected: Math.random() > 0.7,
-            distance: 1 + Math.random() * 5,
-            resolution: "640x480",
-            framerate: 15 + Math.floor(Math.random() * 10),
-            quality: 70 + Math.floor(Math.random() * 20)
-        };
-        
-        updateSensorDisplay(simulatedData);
-        sensorStatus.textContent = 'Demo Data';
-        sensorStatus.className = 'badge bg-info';
+    function updateLocalCameraSensorData() {
+        if (localStreamActive && localStream) {
+            const videoTrack = localStream.getVideoTracks()[0];
+            const settings = videoTrack.getSettings();
+            
+            // Extract real technical information from video track settings
+            const width = settings.width || 640;
+            const height = settings.height || 480;
+            const frameRate = settings.frameRate || 30;
+            
+            // Get motion data from object detection module if available
+            let motionDetected = false;
+            let objectDistance = 0;
+            
+            if (window.objectDetector) {
+                motionDetected = window.objectDetector.humanCount > 0 || window.objectDetector.vehicleCount > 0;
+                
+                // Estimate distance based on object size in detection
+                // A crude approximation, but better than random values
+                objectDistance = window.objectDetector.estimateClosestObjectDistance();
+                if (objectDistance === 0) objectDistance = 3.5; // Default if no objects detected
+            }
+            
+            // Get light level from video analysis
+            const lightLevel = analyzeVideoLightLevel(this.localVideoStream);
+            
+            // Create accurate sensor data from local camera
+            const sensorData = {
+                light_level: lightLevel,
+                motion_detected: motionDetected,
+                distance: objectDistance,
+                resolution: `${width}x${height}`,
+                framerate: frameRate,
+                quality: 85 // Assuming constant quality for webcam
+            };
+            
+            updateSensorDisplay(sensorData);
+            sensorStatus.textContent = 'Live Data';
+            sensorStatus.className = 'badge bg-success';
+        }
     }
     
+    // Analyze video to determine approximate light level (0-1000)
+    function analyzeVideoLightLevel(videoElement) {
+        try {
+            // Create a small canvas to analyze video brightness
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Use a small sample size for efficiency
+            canvas.width = 50;
+            canvas.height = 50;
+            
+            // Draw the current video frame to canvas
+            ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+            
+            // Get pixel data
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            
+            // Calculate average brightness
+            let totalBrightness = 0;
+            for (let i = 0; i < pixels.length; i += 4) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                
+                // Use a common brightness formula (0-255)
+                const brightness = (0.299 * r + 0.587 * g + 0.114 * b);
+                totalBrightness += brightness;
+            }
+            
+            // Convert to an average (0-255)
+            const avgBrightness = totalBrightness / (pixels.length / 4);
+            
+            // Scale to 0-1000 range for lux approximation
+            return Math.round((avgBrightness / 255) * 1000);
+        } catch (error) {
+            console.error('Error analyzing video light level:', error);
+            return 500; // Return medium value on error
+        }
+    }
+    
+    // Make the refresh button trigger continuous updates instead of a single update
     refreshSensorBtn.addEventListener('click', function() {
-        fetchSensorData();
+        // Change button text to indicate status
+        if (sensorUpdateInterval) {
+            // If already updating, stop updates
+            clearInterval(sensorUpdateInterval);
+            sensorUpdateInterval = null;
+            this.innerHTML = '<i class="bi bi-play-fill me-1"></i> Start Live Updates';
+            this.classList.remove('btn-outline-danger');
+            this.classList.add('btn-outline-success');
+        } else {
+            // Start continuous updates
+            sensorUpdateInterval = setInterval(fetchSensorData, 500); // Update every 500ms
+            fetchSensorData(); // Fetch immediately first
+            this.innerHTML = '<i class="bi bi-pause-fill me-1"></i> Pause Live Updates';
+            this.classList.remove('btn-outline-success');
+            this.classList.add('btn-outline-danger');
+        }
     });
+    
+    // Modify to start continuous sensor updates
+    function startSensorUpdates() {
+        // Clear any existing interval
+        if (sensorUpdateInterval) {
+            clearInterval(sensorUpdateInterval);
+        }
+        
+        // Start continuous updates
+        fetchSensorData(); // Fetch immediately first
+        sensorUpdateInterval = setInterval(fetchSensorData, 500); // Update every 500ms
+        
+        // Update button state
+        refreshSensorBtn.innerHTML = '<i class="bi bi-pause-fill me-1"></i> Pause Live Updates';
+        refreshSensorBtn.classList.remove('btn-outline-success');
+        refreshSensorBtn.classList.add('btn-outline-danger');
+    }
     
     // Local camera handling
     async function getAvailableCameras() {
@@ -658,24 +774,93 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear any existing options
             localCameraSelect.innerHTML = '<option selected value="">Select camera...</option>';
             
-            // Add options for each video device
-            videoDevices.forEach(device => {
+            if (videoDevices.length === 0) {
+                // No cameras found, add a disabled option explaining this
                 const option = document.createElement('option');
-                option.value = device.deviceId;
-                option.text = device.label || `Camera ${localCameraSelect.options.length}`;
+                option.disabled = true;
+                option.text = 'No cameras detected by browser';
                 localCameraSelect.appendChild(option);
+                
+                // Add a "refresh" option that will prompt for camera permissions again
+                const refreshOption = document.createElement('option');
+                refreshOption.value = "refresh";
+                refreshOption.text = '🔄 Refresh camera list';
+                localCameraSelect.appendChild(refreshOption);
+            } else {
+                // Add options for each video device, using index as primary identifier
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    // Use index as the value, not the device ID
+                    option.value = index.toString(); 
+                    option.text = device.label || `Camera ${index}`;
+                    
+                    // Save full device info in data attributes for debugging
+                    option.dataset.deviceId = device.deviceId;
+                    option.dataset.index = index;
+                    
+                    localCameraSelect.appendChild(option);
+                });
+                
+                // Add numeric index options for direct camera access
+                const directOption = document.createElement('option');
+                directOption.value = "0";
+                directOption.text = '📷 Default Camera (index 0)';
+                localCameraSelect.appendChild(directOption);
+                
+                if (videoDevices.length > 1) {
+                    const secondOption = document.createElement('option');
+                    secondOption.value = "1";
+                    secondOption.text = '📷 Second Camera (index 1)';
+                    localCameraSelect.appendChild(secondOption);
+                }
+            }
+            
+            // Add event listener to handle the refresh option
+            localCameraSelect.addEventListener('change', function() {
+                if (this.value === 'refresh') {
+                    // Request camera permission to get device labels
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            // Stop the stream immediately after getting permissions
+                            stream.getTracks().forEach(track => track.stop());
+                            // Refresh the camera list
+                            getAvailableCameras();
+                        })
+                        .catch(err => {
+                            console.error('Error requesting camera permission:', err);
+                            alert('Failed to get camera permissions: ' + err.message);
+                        });
+                    
+                    // Reset the select to the prompt option
+                    this.value = '';
+                }
             });
             
             // If we don't have labels, we might need permission first
             if (videoDevices.length > 0 && !videoDevices[0].label) {
-                const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                tempStream.getTracks().forEach(track => track.stop());
-                
-                // Try again to get devices with labels
-                getAvailableCameras();
+                console.log('Camera devices found but no labels available. Requesting permissions...');
+                try {
+                    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    tempStream.getTracks().forEach(track => track.stop());
+                    
+                    // Try again to get devices with labels
+                    getAvailableCameras();
+                } catch (err) {
+                    console.warn('Failed to get camera permissions for labels:', err);
+                    // Add a note to the first option
+                    if (localCameraSelect.options.length > 1) {
+                        localCameraSelect.options[1].text += ' (No permission to access camera name)';
+                    }
+                }
             }
         } catch (error) {
-            console.error('Error getting camera devices:', error);
+            console.error('Error enumerating camera devices:', error);
+            
+            // Add an error option
+            const option = document.createElement('option');
+            option.disabled = true;
+            option.text = `Error: ${error.message}`;
+            localCameraSelect.appendChild(option);
         }
     }
     
@@ -694,80 +879,232 @@ document.addEventListener('DOMContentLoaded', function() {
             cameraStatus.textContent = 'Connecting...';
             cameraStatus.className = 'badge bg-warning';
             
-            // Get the selected camera stream
-            const constraints = {
-                video: {
-                    deviceId: { exact: deviceId },
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
+            // Use camera index instead of device ID for more reliable connection
+            // Extract index from option text or send numeric camera index
+            let cameraIndex = 0; // Default to camera 0
+            
+            // Try to get the index from the selected option
+            const selectedOption = localCameraSelect.options[localCameraSelect.selectedIndex];
+            if (selectedOption && selectedOption.dataset && selectedOption.dataset.index) {
+                cameraIndex = parseInt(selectedOption.dataset.index, 10);
+            }
+            
+            console.log(`Using camera index ${cameraIndex} instead of device ID`);
+            
+            // Start camera via backend for Python-based processing
+            fetch('/api/start_local_camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ camera_id: cameraIndex }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Set the source to the local camera stream endpoint
+                    cameraStream.src = '/local_camera_stream';
+                    cameraStream.classList.remove('d-none');
+                    localVideoStream.classList.add('d-none');
+                    
+                    // Update status
+                    cameraStatus.textContent = 'Local Camera Active';
+                    cameraStatus.className = 'badge bg-success';
+                    localStreamActive = true;
+                    
+                    // Start sensor updates
+                    startSensorUpdates();
+                } else {
+                    // Show detailed error and suggest solutions
+                    cameraStatus.textContent = 'Camera Error';
+                    cameraStatus.className = 'badge bg-danger';
+                    
+                    let errorMessage = data.message || 'Failed to start camera';
+                    
+                    // Add available cameras to the error message if provided
+                    if (data.available_cameras && data.available_cameras.length > 0) {
+                        errorMessage += `\n\nAvailable camera indices: ${data.available_cameras.join(', ')}`;
+                        errorMessage += '\n\nPlease select one of these camera indices and try again.';
+                    } else {
+                        errorMessage += '\n\nNo cameras were detected on your system. Please check your camera connection.';
+                    }
+                    
+                    // Show a more detailed error dialog
+                    const errorDialog = document.createElement('div');
+                    errorDialog.className = 'alert alert-danger mt-3';
+                    errorDialog.innerHTML = `
+                        <h5>Camera Error</h5>
+                        <p>${errorMessage.replace(/\n/g, '<br>')}</p>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="this.nextElementSibling.classList.toggle('d-none')">
+                                Show Technical Details
+                            </button>
+                            <pre class="mt-2 p-2 bg-light d-none" style="font-size: 0.8rem; max-height: 200px; overflow: auto;">
+${data.error_details || 'No additional error details available'}
+                            </pre>
+                        </div>
+                    `;
+                    
+                    // Find a place to show the error dialog
+                    const cameraContainer = document.querySelector('.camera-container');
+                    if (cameraContainer && cameraContainer.parentNode) {
+                        // Insert after camera container
+                        cameraContainer.parentNode.insertBefore(errorDialog, cameraContainer.nextSibling);
+                        
+                        // Auto-remove after 20 seconds
+                        setTimeout(() => {
+                            errorDialog.remove();
+                        }, 20000);
+                    } else {
+                        // Fallback to alert if we can't insert the dialog
+                        alert(errorMessage);
+                    }
+                    
+                    // Refresh available cameras
+                    getAvailableCameras();
                 }
-            };
-            
-            localStream = await navigator.mediaDevices.getUserMedia(constraints);
-            localVideoStream.srcObject = localStream;
-            
-            // Hide image stream and show video element
-            cameraStream.classList.add('d-none');
-            localVideoStream.classList.remove('d-none');
-            
-            // Update status
-            cameraStatus.textContent = 'Local Camera Active';
-            cameraStatus.className = 'badge bg-success';
-            localStreamActive = true;
-            
-            // Update sensor data with local camera info
-            updateLocalCameraSensorData();
+            })
+            .catch(error => {
+                console.error('Error starting local camera:', error);
+                cameraStatus.textContent = 'Connection Error';
+                cameraStatus.className = 'badge bg-danger';
+                localStreamActive = false;
+                alert('Network error connecting to camera API: ' + error.message);
+            });
         } catch (error) {
             console.error('Error starting local camera:', error);
             cameraStatus.textContent = 'Camera Error';
             cameraStatus.className = 'badge bg-danger';
             localStreamActive = false;
+            alert('JavaScript error starting camera: ' + error.message);
         }
     }
     
     function stopLocalCamera() {
-        if (localStream) {
-            localStream.getTracks().forEach(track => track.stop());
-            localStream = null;
-            localVideoStream.srcObject = null;
+        if (localStreamActive) {
+            // Stop camera via backend
+            fetch('/api/stop_local_camera', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Camera stopped:', data);
+            })
+            .catch(error => {
+                console.error('Error stopping camera:', error);
+            });
             
-            // Hide video element and show image stream
-            localVideoStream.classList.add('d-none');
-            cameraStream.classList.remove('d-none');
+            // Reset UI
+            localStreamActive = false;
+            cameraStream.src = '/static/img/camera-placeholder.jpg';
             
             // Update status
             if (!cameraConnected) {
                 cameraStatus.textContent = 'Disconnected';
                 cameraStatus.className = 'badge bg-danger';
             }
-            
-            localStreamActive = false;
         }
     }
     
-    function updateLocalCameraSensorData() {
-        if (localStreamActive && localStream) {
-            const videoTrack = localStream.getVideoTracks()[0];
-            const settings = videoTrack.getSettings();
+    // Enhanced function to get available cameras with more information
+    async function getAvailableCameras() {
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(device => device.kind === 'videoinput');
             
-            // Extract information from video track settings
-            const width = settings.width || 640;
-            const height = settings.height || 480;
-            const frameRate = settings.frameRate || 30;
+            // Clear any existing options
+            localCameraSelect.innerHTML = '<option selected value="">Select camera...</option>';
             
-            // Create simulated sensor data for local camera
-            const simulatedData = {
-                light_level: Math.floor(Math.random() * 800 + 200), // Random light level
-                motion_detected: Math.random() > 0.7, // Random motion detection
-                distance: 1.5 + Math.random() * 3, // Random distance (not really available from webcam)
-                resolution: `${width}x${height}`,
-                framerate: frameRate,
-                quality: 90 // Assumed quality
-            };
+            if (videoDevices.length === 0) {
+                // No cameras found, add a disabled option explaining this
+                const option = document.createElement('option');
+                option.disabled = true;
+                option.text = 'No cameras detected by browser';
+                localCameraSelect.appendChild(option);
+                
+                // Add a "refresh" option that will prompt for camera permissions again
+                const refreshOption = document.createElement('option');
+                refreshOption.value = "refresh";
+                refreshOption.text = '🔄 Refresh camera list';
+                localCameraSelect.appendChild(refreshOption);
+            } else {
+                // Add options for each video device, using index as primary identifier
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    // Use index as the value, not the device ID
+                    option.value = index.toString(); 
+                    option.text = device.label || `Camera ${index}`;
+                    
+                    // Save full device info in data attributes for debugging
+                    option.dataset.deviceId = device.deviceId;
+                    option.dataset.index = index;
+                    
+                    localCameraSelect.appendChild(option);
+                });
+                
+                // Add numeric index options for direct camera access
+                const directOption = document.createElement('option');
+                directOption.value = "0";
+                directOption.text = '📷 Default Camera (index 0)';
+                localCameraSelect.appendChild(directOption);
+                
+                if (videoDevices.length > 1) {
+                    const secondOption = document.createElement('option');
+                    secondOption.value = "1";
+                    secondOption.text = '📷 Second Camera (index 1)';
+                    localCameraSelect.appendChild(secondOption);
+                }
+            }
             
-            updateSensorDisplay(simulatedData);
-            sensorStatus.textContent = 'Local Camera';
-            sensorStatus.className = 'badge bg-info';
+            // Add event listener to handle the refresh option
+            localCameraSelect.addEventListener('change', function() {
+                if (this.value === 'refresh') {
+                    // Request camera permission to get device labels
+                    navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                            // Stop the stream immediately after getting permissions
+                            stream.getTracks().forEach(track => track.stop());
+                            // Refresh the camera list
+                            getAvailableCameras();
+                        })
+                        .catch(err => {
+                            console.error('Error requesting camera permission:', err);
+                            alert('Failed to get camera permissions: ' + err.message);
+                        });
+                    
+                    // Reset the select to the prompt option
+                    this.value = '';
+                }
+            });
+            
+            // If we don't have labels, we might need permission first
+            if (videoDevices.length > 0 && !videoDevices[0].label) {
+                console.log('Camera devices found but no labels available. Requesting permissions...');
+                try {
+                    const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    tempStream.getTracks().forEach(track => track.stop());
+                    
+                    // Try again to get devices with labels
+                    getAvailableCameras();
+                } catch (err) {
+                    console.warn('Failed to get camera permissions for labels:', err);
+                    // Add a note to the first option
+                    if (localCameraSelect.options.length > 1) {
+                        localCameraSelect.options[1].text += ' (No permission to access camera name)';
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error enumerating camera devices:', error);
+            
+            // Add an error option
+            const option = document.createElement('option');
+            option.disabled = true;
+            option.text = `Error: ${error.message}`;
+            localCameraSelect.appendChild(option);
         }
     }
     
@@ -807,13 +1144,10 @@ document.addEventListener('DOMContentLoaded', function() {
     getAvailableCameras(); // Get available cameras on page load
     updateInterval = setInterval(fetchState, 2000);
     
-    // Fetch sensor data on connection and periodically
-    function startSensorUpdates() {
-        fetchSensorData();
-        setInterval(fetchSensorData, 5000);
-    }
+    // Start continuous sensor updates by default
+    startSensorUpdates();
     
-    // Start sensor updates when camera connects
+    // Camera handling - already existing code
     connectCameraBtn.addEventListener('click', function() {
         const ipAddress = cameraIp.value.trim();
         if (!ipAddress) {
@@ -868,5 +1202,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('beforeunload', function() {
         if (animationId) clearInterval(animationId);
         if (updateInterval) clearInterval(updateInterval);
+        if (sensorUpdateInterval) clearInterval(sensorUpdateInterval);
     });
+
+    // Call fetchSensorData immediately on page load
+    fetchSensorData();
 });
