@@ -97,6 +97,79 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- ESP32 Camera Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Camera View</h5>
+                        <span class="badge bg-danger" id="camera-status">Disconnected</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="camera-ip" placeholder="ESP32 Camera IP (e.g., 192.168.1.100)">
+                                    <button class="btn btn-primary" id="connect-camera-btn">Connect</button>
+                                </div>
+                                <div class="form-text">Connect to your ESP32-CAM device by entering its IP address</div>
+                            </div>
+                        </div>
+                        <div class="camera-container">
+                            <img id="camera-stream" src="{{ url_for('static', filename='img/camera-placeholder.jpg') }}" alt="Camera stream" class="img-fluid">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ESP32 Camera Sensor Data Card - New addition -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Camera Sensor Data</h5>
+                        <span class="badge bg-secondary" id="sensor-status">No Data</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="sensor-box mb-3">
+                                    <div class="sensor-label">Light Level</div>
+                                    <div class="progress">
+                                        <div id="light-level-bar" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    <div class="sensor-value" id="light-level-value">0 lux</div>
+                                </div>
+                                <div class="sensor-box mb-3">
+                                    <div class="sensor-label">Motion Detection</div>
+                                    <div class="sensor-indicator" id="motion-indicator">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        <span id="motion-status">No motion</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="sensor-box mb-3">
+                                    <div class="sensor-label">Object Distance</div>
+                                    <div class="sensor-value" id="distance-value">-- m</div>
+                                    <div class="sensor-indicator" id="distance-indicator">
+                                        <i class="bi bi-arrows-expand"></i>
+                                        <span id="distance-status">No data</span>
+                                    </div>
+                                </div>
+                                <div class="sensor-box">
+                                    <div class="sensor-label">Camera Details</div>
+                                    <div class="sensor-detail-list">
+                                        <div class="sensor-detail"><span>Resolution:</span> <span id="camera-resolution">--</span></div>
+                                        <div class="sensor-detail"><span>Framerate:</span> <span id="camera-framerate">--</span></div>
+                                        <div class="sensor-detail"><span>Quality:</span> <span id="camera-quality">--</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-secondary" id="refresh-sensor-btn">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Refresh Sensor Data
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Right side - Helmet Display and Features -->

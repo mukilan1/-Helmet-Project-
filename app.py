@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for, Response
 import json
 import random
 import time
 import os
+import requests
 from datetime import datetime
 
 app = Flask(__name__)
@@ -18,7 +19,17 @@ simulation_state = {
     'nav_instruction': None,
     'nav_distance': 0,
     'battery_level': 85,
-    'fuel_level': 75
+    'fuel_level': 75,
+    'camera_connected': False,
+    'esp32_camera_url': 'http://192.168.1.100', # Default ESP32 camera IP - update this
+    'camera_sensor_data': {
+        'light_level': 500,  # Ambient light level in lux
+        'motion_detected': False,  # Motion detection flag
+        'distance': 3.5,  # Distance in meters (from ultrasonic/ToF sensor)
+        'resolution': '640x480',  # Camera resolution
+        'framerate': 20,  # Camera framerate
+        'quality': 85  # JPEG quality (0-100)
+    }
 }
 
 # Sample data for simulation
@@ -44,8 +55,8 @@ def simulation():
 
 @app.route('/api/state')
 def get_state():
-    # Add current time to state
-    simulation_state['current_time'] = datetime.now().strftime("%H:%M")
+    # Add current time to state with 12-hour format and AM/PM
+    simulation_state['current_time'] = datetime.now().strftime("%I:%M %p")
     return jsonify(simulation_state)
 
 @app.route('/api/update_speed', methods=['POST'])
@@ -161,5 +172,71 @@ def voice_command():
     
     return jsonify(response)
 
+@app.route('/api/connect_camera', methods=['POST'])
+def connect_camera():
+    data = request.json
+    ip_address = data.get('ip_address', '')
+    
+    if ip_address:
+        # Update the ESP32 camera URL
+        simulation_state['esp32_camera_url'] = f'http://{ip_address}'
+        
+        # Test the connection
+        try:
+            resp = requests.get(f'{simulation_state["esp32_camera_url"]}', timeout=3)
+            if resp.status_code == 200:
+                simulation_state['camera_connected'] = True
+                return jsonify({'success': True, 'message': 'Camera connected successfully'})
+        except:
+            pass
+            
+    return jsonify({'success': False, 'message': 'Failed to connect to camera'})
+
+@app.route('/camera_stream')
+def camera_stream():
+    """Proxy the ESP32 camera stream"""
+    if not simulation_state['camera_connected']:
+        # Return a fallback image or error message if camera is not connected
+        return Response(b'Camera not connected', mimetype='text/plain')
+    
+    try:
+        # Forward the request to the ESP32 camera
+        resp = requests.get(f'{simulation_state["esp32_camera_url"]}/stream', stream=True, timeout=5)
+        
+        # Stream the response back to the client
+        return Response(
+            resp.iter_content(chunk_size=1024),
+            content_type=resp.headers['content-type']
+        )
+    except:
+        return Response(b'Camera stream error', mimetype='text/plain')
+
+@app.route('/api/camera_status')
+def camera_status():
+    return jsonify({
+        'connected': simulation_state['camera_connected'],
+        'url': simulation_state['esp32_camera_url']
+    })
+
+@app.route('/api/camera_sensors', methods=['GET'])
+def camera_sensors():
+    """Get sensor data from the ESP32 camera"""
+    if not simulation_state['camera_connected']:
+        return jsonify({'success': False, 'message': 'Camera not connected'})
+    
+    try:
+        # In a real implementation, you'd fetch this data from the ESP32
+        # For demo purposes, we'll simulate some sensor readings
+        simulation_state['camera_sensor_data']['light_level'] = random.randint(200, 800)
+        simulation_state['camera_sensor_data']['motion_detected'] = random.random() > 0.7
+        simulation_state['camera_sensor_data']['distance'] = round(1 + random.random() * 5, 2)
+        
+        return jsonify({
+            'success': True,
+            'sensors': simulation_state['camera_sensor_data']
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')

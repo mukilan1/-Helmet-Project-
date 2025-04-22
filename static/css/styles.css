@@ -215,3 +215,110 @@ body {
 #voice-response.response {
     background-color: rgba(0, 255, 0, 0.1);
 }
+
+/* Camera Display */
+.camera-container {
+    width: 100%;
+    height: 240px;
+    background-color: #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px;
+    overflow: hidden;
+    position: relative;
+}
+
+.camera-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 20%, rgba(0,0,0,0) 80%, rgba(0,0,0,0.2) 100%);
+    pointer-events: none;
+}
+
+#camera-stream {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Camera Sensor Data Display */
+.sensor-box {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.sensor-label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.sensor-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 5px;
+    color: #212529;
+}
+
+.sensor-indicator {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.sensor-indicator i {
+    margin-right: 8px;
+    font-size: 1.1rem;
+}
+
+.sensor-detail-list {
+    font-size: 0.9rem;
+}
+
+.sensor-detail {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.sensor-detail span:first-child {
+    color: #6c757d;
+}
+
+.sensor-detail span:last-child {
+    font-weight: 500;
+}
+
+#motion-indicator.active {
+    color: #dc3545;
+    animation: pulse 1.5s infinite;
+}
+
+#distance-indicator.warning {
+    color: #fd7e14;
+}
+
+#distance-indicator.danger {
+    color: #dc3545;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}

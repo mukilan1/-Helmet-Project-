@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSpeed = 0;
     let animationId = null;
     let updateInterval = null;
+    let cameraConnected = false;
     
     // DOM Elements
     const speedControl = document.getElementById('speed-control');
@@ -41,6 +42,26 @@ document.addEventListener('DOMContentLoaded', function() {
     const voiceCommandInput = document.getElementById('voice-command');
     const sendCommandBtn = document.getElementById('send-command-btn');
     const voiceResponse = document.getElementById('voice-response');
+    
+    // Camera elements
+    const cameraIp = document.getElementById('camera-ip');
+    const connectCameraBtn = document.getElementById('connect-camera-btn');
+    const cameraStatus = document.getElementById('camera-status');
+    const cameraStream = document.getElementById('camera-stream');
+    
+    // Sensor data elements
+    const sensorStatus = document.getElementById('sensor-status');
+    const lightLevelBar = document.getElementById('light-level-bar');
+    const lightLevelValue = document.getElementById('light-level-value');
+    const motionIndicator = document.getElementById('motion-indicator');
+    const motionStatus = document.getElementById('motion-status');
+    const distanceValue = document.getElementById('distance-value');
+    const distanceIndicator = document.getElementById('distance-indicator');
+    const distanceStatus = document.getElementById('distance-status');
+    const cameraResolution = document.getElementById('camera-resolution');
+    const cameraFramerate = document.getElementById('camera-framerate');
+    const cameraQuality = document.getElementById('camera-quality');
+    const refreshSensorBtn = document.getElementById('refresh-sensor-btn');
     
     // Initialize road animation
     function updateRoadLines() {
@@ -428,9 +449,244 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
+    // Camera handling
+    connectCameraBtn.addEventListener('click', function() {
+        const ipAddress = cameraIp.value.trim();
+        if (!ipAddress) {
+            alert('Please enter the ESP32 camera IP address');
+            return;
+        }
+        
+        cameraStatus.textContent = 'Connecting...';
+        cameraStatus.className = 'badge bg-warning';
+        
+        fetch('/api/connect_camera', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ip_address: ipAddress }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                cameraStatus.textContent = 'Connected';
+                cameraStatus.className = 'badge bg-success';
+                cameraConnected = true;
+                
+                // Update camera stream source
+                updateCameraStream();
+                
+                // Start sensor updates
+                startSensorUpdates();
+            } else {
+                cameraStatus.textContent = 'Connection Failed';
+                cameraStatus.className = 'badge bg-danger';
+                cameraConnected = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error connecting to camera:', error);
+            cameraStatus.textContent = 'Connection Error';
+            cameraStatus.className = 'badge bg-danger';
+            cameraConnected = false;
+        });
+    });
+    
+    function updateCameraStream() {
+        if (cameraConnected) {
+            // Set random query parameter to avoid caching
+            cameraStream.src = `/camera_stream?t=${new Date().getTime()}`;
+            
+            // Handle camera stream errors
+            cameraStream.onerror = function() {
+                cameraStatus.textContent = 'Stream Error';
+                cameraStatus.className = 'badge bg-danger';
+                cameraConnected = false;
+                cameraStream.src = '/static/img/camera-placeholder.jpg';
+            };
+        } else {
+            cameraStream.src = '/static/img/camera-placeholder.jpg';
+        }
+    }
+    
+    // Check camera status on page load
+    function checkCameraStatus() {
+        fetch('/api/camera_status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.connected) {
+                    cameraStatus.textContent = 'Connected';
+                    cameraStatus.className = 'badge bg-success';
+                    cameraConnected = true;
+                    cameraIp.value = data.url.replace('http://', '');
+                    updateCameraStream();
+                }
+            })
+            .catch(error => console.error('Error checking camera status:', error));
+    }
+    
+    // Sensor data handling
+    function fetchSensorData() {
+        if (!cameraConnected) {
+            sensorStatus.textContent = 'Camera Disconnected';
+            sensorStatus.className = 'badge bg-secondary';
+            return;
+        }
+        
+        sensorStatus.textContent = 'Fetching...';
+        sensorStatus.className = 'badge bg-warning';
+        
+        fetch('/api/camera_sensors')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateSensorDisplay(data.sensors);
+                    sensorStatus.textContent = 'Connected';
+                    sensorStatus.className = 'badge bg-success';
+                } else {
+                    sensorStatus.textContent = 'Data Error';
+                    sensorStatus.className = 'badge bg-danger';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sensor data:', error);
+                sensorStatus.textContent = 'Connection Error';
+                sensorStatus.className = 'badge bg-danger';
+                
+                // Simulate sensor data if real data isn't available
+                simulateSensorData();
+            });
+    }
+    
+    function updateSensorDisplay(sensors) {
+        // Update light level
+        if (sensors.light_level !== undefined) {
+            const lightPercent = Math.min(100, Math.max(0, sensors.light_level / 10));
+            lightLevelBar.style.width = `${lightPercent}%`;
+            lightLevelValue.textContent = `${sensors.light_level} lux`;
+        }
+        
+        // Update motion detection
+        if (sensors.motion_detected !== undefined) {
+            if (sensors.motion_detected) {
+                motionIndicator.classList.add('active');
+                motionStatus.textContent = 'Motion detected!';
+            } else {
+                motionIndicator.classList.remove('active');
+                motionStatus.textContent = 'No motion';
+            }
+        }
+        
+        // Update distance sensor
+        if (sensors.distance !== undefined) {
+            distanceValue.textContent = `${sensors.distance.toFixed(2)} m`;
+            
+            if (sensors.distance < 1.0) {
+                distanceIndicator.className = 'sensor-indicator danger';
+                distanceStatus.textContent = 'Very close!';
+            } else if (sensors.distance < 3.0) {
+                distanceIndicator.className = 'sensor-indicator warning';
+                distanceStatus.textContent = 'Getting close';
+            } else {
+                distanceIndicator.className = 'sensor-indicator';
+                distanceStatus.textContent = 'Safe distance';
+            }
+        }
+        
+        // Update camera details
+        if (sensors.resolution) {
+            cameraResolution.textContent = sensors.resolution;
+        }
+        if (sensors.framerate) {
+            cameraFramerate.textContent = `${sensors.framerate} fps`;
+        }
+        if (sensors.quality) {
+            cameraQuality.textContent = `${sensors.quality}%`;
+        }
+    }
+    
+    function simulateSensorData() {
+        // Generate simulated sensor data for demo purposes
+        const simulatedData = {
+            light_level: Math.floor(Math.random() * 1000),
+            motion_detected: Math.random() > 0.7,
+            distance: 1 + Math.random() * 5,
+            resolution: "640x480",
+            framerate: 15 + Math.floor(Math.random() * 10),
+            quality: 70 + Math.floor(Math.random() * 20)
+        };
+        
+        updateSensorDisplay(simulatedData);
+        sensorStatus.textContent = 'Demo Data';
+        sensorStatus.className = 'badge bg-info';
+    }
+    
+    refreshSensorBtn.addEventListener('click', function() {
+        fetchSensorData();
+    });
+    
     // Initial state fetch and periodic updates
     fetchState();
+    checkCameraStatus();
     updateInterval = setInterval(fetchState, 2000);
+    
+    // Fetch sensor data on connection and periodically
+    function startSensorUpdates() {
+        fetchSensorData();
+        setInterval(fetchSensorData, 5000);
+    }
+    
+    // Start sensor updates when camera connects
+    connectCameraBtn.addEventListener('click', function() {
+        const ipAddress = cameraIp.value.trim();
+        if (!ipAddress) {
+            alert('Please enter the ESP32 camera IP address');
+            return;
+        }
+        
+        cameraStatus.textContent = 'Connecting...';
+        cameraStatus.className = 'badge bg-warning';
+        
+        fetch('/api/connect_camera', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ip_address: ipAddress }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                cameraStatus.textContent = 'Connected';
+                cameraStatus.className = 'badge bg-success';
+                cameraConnected = true;
+                
+                // Update camera stream source
+                updateCameraStream();
+                
+                // Start sensor updates
+                startSensorUpdates();
+            } else {
+                cameraStatus.textContent = 'Connection Failed';
+                cameraStatus.className = 'badge bg-danger';
+                cameraConnected = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error connecting to camera:', error);
+            cameraStatus.textContent = 'Connection Error';
+            cameraStatus.className = 'badge bg-danger';
+            cameraConnected = false;
+        });
+    });
+    
+    // Update camera stream periodically
+    setInterval(function() {
+        if (cameraConnected) {
+            updateCameraStream();
+        }
+    }, 5000);
     
     // Clean up on page unload
     window.addEventListener('beforeunload', function() {
