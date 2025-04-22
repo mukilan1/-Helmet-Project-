@@ -1,0 +1,217 @@
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Motorcycle View */
+#motorcycle-view {
+    height: 300px;
+    width: 100%;
+    background-color: #87CEEB;
+    position: relative;
+    overflow: hidden;
+    perspective: 500px;
+}
+
+.bg-motorcycle {
+    background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #4D4D4D 60%, #4D4D4D 100%);
+}
+
+.road-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    perspective: 200px;
+    transform-style: preserve-3d;
+}
+
+.road {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: #4D4D4D;
+    transform: rotateX(60deg);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    overflow: hidden;
+}
+
+.road-line {
+    position: absolute;
+    width: 10px;
+    height: 40px;
+    background-color: white;
+    animation: roadLineAnimation 1s linear infinite;
+}
+
+.road-line:nth-child(1) {
+    top: -50px;
+}
+
+.road-line:nth-child(2) {
+    top: 50px;
+}
+
+.road-line:nth-child(3) {
+    top: 150px;
+}
+
+@keyframes roadLineAnimation {
+    0% {
+        transform: translateY(0);
+    }
+    100% {
+        transform: translateY(200px);
+    }
+}
+
+.motorcycle-dashboard {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    background-color: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+
+.speedometer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    color: white;
+}
+
+.speedometer-value {
+    font-size: 2rem;
+    font-weight: bold;
+}
+
+.speedometer-unit {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+.indicators {
+    position: absolute;
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+}
+
+.indicator {
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.indicator.active {
+    color: green;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* Helmet Display */
+.helmet-display {
+    background-color: #000;
+    color: #0F0;
+    padding: 20px;
+    border-radius: 10px;
+    height: 300px;
+    position: relative;
+    font-family: 'Courier New', monospace;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.2) inset;
+    overflow: hidden;
+}
+
+.helmet-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, rgba(0, 255, 0, 0.1) 0%, rgba(0, 0, 0, 0) 100%);
+    pointer-events: none;
+}
+
+.helmet-time {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 1rem;
+}
+
+.helmet-speed {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-align: center;
+}
+
+.helmet-nav {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav-direction {
+    font-size: 2rem;
+    height: 40px;
+}
+
+.nav-instruction {
+    font-size: 0.8rem;
+    text-align: center;
+    max-width: 200px;
+}
+
+.helmet-call {
+    position: absolute;
+    bottom: 60px;
+    left: 20px;
+    font-size: 1rem;
+    color: yellow;
+}
+
+.helmet-music {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    font-size: 0.9rem;
+}
+
+/* Voice Assistant */
+#voice-response {
+    font-family: 'Courier New', monospace;
+    transition: background-color 0.3s;
+}
+
+#voice-response.listening {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+#voice-response.processing {
+    background-color: rgba(255, 255, 0, 0.1);
+}
+
+#voice-response.response {
+    background-color: rgba(0, 255, 0, 0.1);
+}

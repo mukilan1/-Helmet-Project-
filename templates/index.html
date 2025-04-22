@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Helmet Project</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-helmet me-2"></i>
+                Smart Helmet Project
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/simulation">Simulation</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4">Smart Helmet Project</h1>
+                <p class="lead mb-5">An interactive simulation of a smart motorcycle helmet with integrated display and voice assistant.</p>
+            </div>
+        </div>
+        
+        <div class="row mb-5">
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-speedometer2 me-2"></i>Real-time Display</h5>
+                        <p class="card-text">View speed, navigation directions, caller information, and music status on the helmet's built-in heads-up display.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-mic-fill me-2"></i>Voice Assistant</h5>
+                        <p class="card-text">Control music, navigation, and phone calls using natural voice commands without taking your hands off the handlebars.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-map me-2"></i>Navigation</h5>
+                        <p class="card-text">Get turn-by-turn directions displayed right in your field of view, with clear visual indicators for upcoming turns.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Try the Simulation</h5>
+                    </div>
+                    <div class="card-body text-center py-5">
+                        <h2 class="mb-4">Experience the Smart Helmet Interface</h2>
+                        <p>Test drive our interactive simulation to explore all features of the smart helmet system.</p>
+                        <a href="/simulation" class="btn btn-primary btn-lg px-4">Launch Simulation</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-4 mt-5">
+        <div class="container">
+            <p class="mb-0">Smart Helmet Project &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

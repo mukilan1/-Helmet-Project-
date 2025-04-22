@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Helmet Simulation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-helmet me-2"></i>
+                Smart Helmet Project
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/simulation">Simulation</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <!-- Left side - Motorcycle View and Controls -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Motorcycle View</h5>
+                        <span class="badge bg-danger" id="speed-indicator">0 km/h</span>
+                    </div>
+                    <div class="card-body p-0 position-relative">
+                        <div id="motorcycle-view" class="bg-motorcycle">
+                            <div class="road-container">
+                                <div class="road">
+                                    <div class="road-line"></div>
+                                    <div class="road-line"></div>
+                                    <div class="road-line"></div>
+                                </div>
+                            </div>
+                            <div class="motorcycle-dashboard">
+                                <div class="speedometer">
+                                    <div class="speedometer-value" id="dashboard-speed">0</div>
+                                    <div class="speedometer-unit">km/h</div>
+                                </div>
+                                <div class="indicators">
+                                    <div class="indicator left-turn" id="indicator-left"><i class="bi bi-arrow-left-circle-fill"></i></div>
+                                    <div class="indicator right-turn" id="indicator-right"><i class="bi bi-arrow-right-circle-fill"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Motorcycle Controls</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="speed-control" class="form-label">Speed Control</label>
+                                <input type="range" class="form-range" id="speed-control" min="0" max="120" value="0">
+                                <div class="d-grid gap-2 mt-3">
+                                    <button class="btn btn-primary" id="accelerate-btn">
+                                        <i class="bi bi-speedometer me-2"></i>Accelerate
+                                    </button>
+                                    <button class="btn btn-danger" id="brake-btn">
+                                        <i class="bi bi-exclamation-octagon me-2"></i>Brake
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="d-flex flex-column align-items-center">
+                                    <button class="btn btn-outline-secondary mb-2" id="turn-left-btn">
+                                        <i class="bi bi-arrow-left-circle"></i> Turn Left
+                                    </button>
+                                    <button class="btn btn-outline-secondary mb-2" id="turn-right-btn">
+                                        Turn Right <i class="bi bi-arrow-right-circle"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" id="center-btn">
+                                        <i class="bi bi-arrow-up-circle"></i> Center
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right side - Helmet Display and Features -->
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Helmet Display</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="helmet-display" class="helmet-display">
+                            <div class="helmet-time" id="helmet-time">00:00</div>
+                            <div class="helmet-speed" id="helmet-speed">0 km/h</div>
+                            <div class="helmet-nav" id="helmet-nav">
+                                <div class="nav-direction" id="nav-direction"></div>
+                                <div class="nav-instruction" id="nav-instruction"></div>
+                            </div>
+                            <div class="helmet-call" id="helmet-call"></div>
+                            <div class="helmet-music" id="helmet-music"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Test Features</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Call Simulation</label>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="caller-name" placeholder="Caller name">
+                                <button class="btn btn-primary" id="start-call-btn">
+                                    <i class="bi bi-telephone-fill me-1"></i> Call
+                                </button>
+                            </div>
+                            <button class="btn btn-outline-danger w-100" id="end-call-btn">
+                                <i class="bi bi-telephone-x-fill me-1"></i> End Call
+                            </button>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Music Control</label>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success" id="play-music-btn">
+                                    <i class="bi bi-play-fill me-1"></i> Play Music
+                                </button>
+                                <button class="btn btn-outline-secondary" id="pause-music-btn">
+                                    <i class="bi bi-pause-fill me-1"></i> Pause
+                                </button>
+                                <div class="btn-group">
+                                    <button class="btn btn-outline-primary" id="prev-track-btn">
+                                        <i class="bi bi-skip-backward-fill"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary" id="next-track-btn">
+                                        <i class="bi bi-skip-forward-fill"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Navigation</label>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-info text-white" id="start-navigation-btn">
+                                    <i class="bi bi-map-fill me-1"></i> Start Navigation
+                                </button>
+                                <button class="btn btn-outline-info" id="next-direction-btn">
+                                    Next Direction <i class="bi bi-arrow-right"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" id="stop-navigation-btn">
+                                    <i class="bi bi-x-circle me-1"></i> Cancel Navigation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Voice Assistant</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="voice-command" class="form-label">Simulate Voice Command</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-mic-fill"></i></span>
+                                <input type="text" class="form-control" id="voice-command" placeholder="Enter voice command...">
+                                <button class="btn btn-primary" id="send-command-btn">Send</button>
+                            </div>
+                            <div class="form-text">Try: "Call Mom", "Play music", "Navigate home"</div>
+                        </div>
+                        <div id="voice-response" class="mt-3 p-2 border rounded bg-light" style="min-height: 60px;">
+                            <p class="text-muted mb-0">Voice assistant is ready...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="bg-dark text-white text-center py-3 mt-4">
+        <div class="container">
+            <p class="mb-0">Smart Helmet Project &copy; 2023</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
+</body>
+</html>
