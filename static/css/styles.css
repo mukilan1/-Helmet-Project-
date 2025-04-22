@@ -246,6 +246,12 @@ body {
     object-fit: contain;
 }
 
+#local-video-stream {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 /* Camera Sensor Data Display */
 .sensor-box {
     background-color: #f8f9fa;
