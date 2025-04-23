@@ -1,0 +1,11 @@
+# SSD MobileNet v2 COCO configuration
+node {
+  name: "image_tensor"
+  op: "Placeholder"
+  attr {
+    key: "dtype"
+    value {
+      type: DT_UINT8
+    }
+  }
+}
