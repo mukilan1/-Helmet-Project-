@@ -151,48 +151,138 @@ def navigation():
 
 @app.route('/api/voice_command', methods=['POST'])
 def voice_command():
-    data = request.json
-    command = data.get('command', '').lower()
-    response = {
-        'success': True, 
-        'command': command,
-        'action_taken': True,
-        'response': 'Command processed'
-    }
+    """Process voice commands from the voice assistant"""
+    try:
+        data = request.json
+        command = data.get('command', '').lower().strip()
+        
+        # Prepare response structure
+        response = {
+            'success': True, 
+            'command': command,
+            'action_taken': True,
+            'response': 'Command processed'
+        }
+        
+        # Log the incoming command
+        print(f"Voice command received: '{command}'")
+        
+        # Process different voice commands
+        if 'call' in command:
+            # Extract name after "call"
+            words = command.split()
+            if len(words) > 1 and words[0] == "call":
+                name = " ".join(words[1:])
+                simulation_state['call_active'] = True
+                simulation_state['caller_name'] = name
+                response['response'] = f"Calling {name}"
+            else:
+                # Check if name is somewhere else in the command
+                for i, word in enumerate(words):
+                    if word == "call" and i < len(words) - 1:
+                        name = " ".join(words[i+1:])
+                        simulation_state['call_active'] = True
+                        simulation_state['caller_name'] = name
+                        response['response'] = f"Calling {name}"
+                        break
+        
+        elif any(x in command for x in ['end call', 'hang up', 'stop call']):
+            simulation_state['call_active'] = False
+            simulation_state['caller_name'] = None
+            response['response'] = "Call ended"
+        
+        elif any(x in command for x in ['play music', 'play song', 'start music']):
+            song = random.choice(songs)
+            simulation_state['music_playing'] = True
+            simulation_state['song_title'] = song
+            response['response'] = f"Playing {song}"
+        
+        elif any(x in command for x in ['pause music', 'stop music']):
+            simulation_state['music_playing'] = False
+            response['response'] = "Music paused"
+        
+        elif 'next song' in command or 'skip song' in command:
+            song = random.choice(songs)
+            simulation_state['music_playing'] = True
+            simulation_state['song_title'] = song
+            response['response'] = f"Playing next song: {song}"
+        
+        elif 'previous song' in command:
+            song = random.choice(songs)
+            simulation_state['music_playing'] = True
+            simulation_state['song_title'] = song
+            response['response'] = f"Playing previous song: {song}"
+        
+        elif any(x in command for x in ['navigate', 'directions', 'navigation', 'start navigation']):
+            # Check if there's a destination
+            destination = None
+            for word in ['to', 'towards']:
+                if word in command:
+                    parts = command.split(word, 1)
+                    if len(parts) > 1:
+                        destination = parts[1].strip()
+            
+            # Start navigation with first step
+            step = navigation_steps[0]
+            simulation_state['nav_direction'] = step['direction']
+            simulation_state['nav_instruction'] = step['instruction']
+            simulation_state['nav_distance'] = step['distance']
+            
+            if destination:
+                response['response'] = f"Starting navigation to {destination}: {step['instruction']}"
+            else:
+                response['response'] = f"Starting navigation: {step['instruction']}"
+        
+        elif any(x in command for x in ['stop navigation', 'cancel navigation', 'end navigation']):
+            simulation_state['nav_direction'] = None
+            simulation_state['nav_instruction'] = None
+            simulation_state['nav_distance'] = 0
+            response['response'] = "Navigation cancelled"
+        
+        elif 'next direction' in command:
+            # Find current step and move to next
+            current_direction = simulation_state['nav_direction']
+            for i, step in enumerate(navigation_steps):
+                if step['direction'] == current_direction and i < len(navigation_steps) - 1:
+                    next_step = navigation_steps[i + 1]
+                    simulation_state['nav_direction'] = next_step['direction']
+                    simulation_state['nav_instruction'] = next_step['instruction']
+                    simulation_state['nav_distance'] = next_step['distance']
+                    response['response'] = f"Next direction: {next_step['instruction']}"
+                    break
+            else:
+                response['response'] = "You have reached your destination"
+        
+        elif 'speed' in command:
+            # Report current speed
+            current_speed = simulation_state['speed']
+            response['response'] = f"Current speed is {current_speed} kilometers per hour"
+            
+        elif any(x in command for x in ['time', "what's the time", 'current time']):
+            # Report current time
+            current_time = datetime.now().strftime("%I:%M %p")
+            response['response'] = f"The current time is {current_time}"
+        
+        elif 'help' in command:
+            # List available commands
+            response['response'] = ("Available commands: call [name], end call, "
+                                   "play music, pause music, next song, previous song, "
+                                   "navigate to [place], stop navigation, next direction, "
+                                   "current speed, what's the time")
+        
+        else:
+            response['action_taken'] = False
+            response['response'] = "I didn't understand that command. Try saying 'Helmet help' for available commands."
+        
+        return jsonify(response)
     
-    # Process different voice commands
-    if 'call' in command:
-        # Extract name after "call"
-        words = command.split()
-        if len(words) > 1 and words[0] == "call":
-            name = " ".join(words[1:])
-            simulation_state['call_active'] = True
-            simulation_state['caller_name'] = name
-            response['response'] = f"Calling {name}"
-    
-    elif 'play music' in command or 'play song' in command:
-        song = random.choice(songs)
-        simulation_state['music_playing'] = True
-        simulation_state['song_title'] = song
-        response['response'] = f"Playing {song}"
-    
-    elif 'pause music' in command or 'stop music' in command:
-        simulation_state['music_playing'] = False
-        response['response'] = "Music paused"
-    
-    elif 'navigate' in command or 'directions' in command:
-        # Start navigation with first step
-        step = navigation_steps[0]
-        simulation_state['nav_direction'] = step['direction']
-        simulation_state['nav_instruction'] = step['instruction']
-        simulation_state['nav_distance'] = step['distance']
-        response['response'] = f"Starting navigation: {step['instruction']}"
-    
-    else:
-        response['action_taken'] = False
-        response['response'] = "Command not recognized"
-    
-    return jsonify(response)
+    except Exception as e:
+        print(f"Error processing voice command: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'response': "Sorry, there was an error processing your command"
+        })
 
 @app.route('/api/connect_camera', methods=['POST'])
 def connect_camera():
@@ -274,6 +364,8 @@ def camera_stream():
     return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
+# Fix iPhone camera connection error
+
 @app.route('/api/start_local_camera', methods=['POST'])
 def start_local_camera():
     """Start local webcam with object detection"""
@@ -288,8 +380,11 @@ def start_local_camera():
             # Give the thread time to stop
             time.sleep(0.5)
             
-            # Release webcam resource
-            webcam.release()
+            # Release webcam resource only if it's not None
+            try:
+                webcam.release()
+            except:
+                print("Warning: Could not release previous webcam - it may not have been initialized properly")
             webcam = None
         
         # Initialize webcam with robust error handling
@@ -368,6 +463,25 @@ def try_open_camera(camera_id, api_preference=None):
             return try_open_camera(0)
         
         print(f"Attempting to open camera with ID: {camera_id}, API: {api_preference}")
+        
+        # Special handling for iPhone/iOS devices
+        if isinstance(camera_id, str) and ('iphone' in camera_id.lower() or 'ios' in camera_id.lower()):
+            print("Detected iPhone camera attempt, using alternative approach")
+            # For iPhones, we need to handle differently since they might use a different protocol
+            # Check if we can connect to standard indices first
+            for idx in [0, 1]:
+                alt_result = try_open_camera(idx)
+                if alt_result and alt_result['success']:
+                    return alt_result
+            
+            # If standard indices fail, return specific error for iPhone users
+            return {
+                'success': False, 
+                'camera': None, 
+                'error': "iPhone cameras may require an IP camera app. Please use the ESP32 camera connection instead."
+            }
+        
+        # Normal camera opening procedure
         if api_preference:
             cap = cv2.VideoCapture(camera_id, api_preference)
         else:
@@ -381,7 +495,11 @@ def try_open_camera(camera_id, api_preference=None):
                 print(f"Successfully opened and read from camera {camera_id}")
                 return {'success': True, 'camera': cap, 'error': None}
             else:
-                cap.release()
+                # Safely release if opened but can't read
+                try:
+                    cap.release()
+                except:
+                    pass
                 return {'success': False, 'camera': None, 'error': f"Camera {camera_id} opened but could not read frame"}
         else:
             return {'success': False, 'camera': None, 'error': f"Could not open camera {camera_id}"}
@@ -399,7 +517,11 @@ def get_available_cameras():
                 ret, frame = cap.read()
                 if ret:
                     available.append(i)
-                cap.release()
+                # Always release the camera properly
+                try:
+                    cap.release()
+                except:
+                    pass
         except:
             pass
     return available
@@ -416,7 +538,10 @@ def stop_local_camera():
         
         # Release webcam if it exists
         if webcam is not None:
-            webcam.release()
+            try:
+                webcam.release()
+            except Exception as e:
+                print(f"Warning: Could not release webcam: {e}")
             webcam = None
         
         return jsonify({'success': True, 'message': 'Local camera stopped'})

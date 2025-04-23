@@ -394,6 +394,8 @@
                     </div>
                 </div>
                 
+                <!-- Fix the voice assistant card structure -->
+
                 <div class="card mb-4">
                     <div class="card-header bg-dark text-white">
                         <h5 class="mb-0">Voice Assistant</h5>
@@ -409,25 +411,52 @@
                             <div class="form-text">Try: "Call Mom", "Play music", "Navigate home"</div>
                         </div>
                         <div id="voice-response" class="mt-3 p-2 border rounded bg-light" style="min-height: 60px;">
-                            <p class="text-muted mb-0">Voice assistant is ready...</p>
+                            <p class="text-muted mb-0">Voice assistant is ready. Say "Helmet" followed by a command...</p>
+                        </div>
+                        
+                        <!-- Voice control toggle button -->
+                        <button id="voice-toggle-btn" class="btn btn-success mt-3 w-100">
+                            <i class="bi bi-mic-fill"></i> Start Voice Assistant
+                        </button>
+                        
+                        <!-- Voice commands help section - fixed formatting -->
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#voiceCommandsHelp">
+                                <i class="bi bi-info-circle me-1"></i> Available Voice Commands
+                            </button>
+                            <div class="collapse mt-2" id="voiceCommandsHelp">
+                                <div class="card card-body bg-light">
+                                    <small>
+                                        <p class="mb-1"><strong>Wake word:</strong> "Helmet"</p>
+                                        <ul class="mb-0 ps-3">
+                                            <li>"Helmet call [name]" - Start a call</li>
+                                            <li>"Helmet end call" - End current call</li>
+                                            <li>"Helmet play music" - Start playing music</li>
+                                            <li>"Helmet pause music" - Pause music</li>
+                                            <li>"Helmet next song" - Play next song</li>
+                                            <li>"Helmet navigate to [place]" - Start navigation</li>
+                                            <li>"Helmet stop navigation" - End navigation</li>
+                                            <li>"Helmet what's the time" - Get current time</li>
+                                            <li>"Helmet help" - List available commands</li>
+                                        </ul>
+                                    </small>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
     <footer class="bg-dark text-white text-center py-3 mt-4">
         <div class="container">
             <p class="mb-0">Smart Helmet Project &copy; 2023</p>
         </div>
     </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/motorcycle-view.js') }}"></script>
-    
-    <!-- Add MediaPipe object detection library -->
     <script src="{{ url_for('static', filename='js/object-detection.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/motorcycle-view.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/voice-assistant.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

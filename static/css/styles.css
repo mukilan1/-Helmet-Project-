@@ -1,6 +1,9 @@
 /* General Styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* Enhanced Motorcycle View */
@@ -543,4 +546,19 @@ body {
     100% {
         opacity: 1;
     }
+}
+
+/* Add footer styling to fix alignment issues */
+
+footer {
+    position: relative;
+    width: 100%;
+    clear: both;
+    margin-top: 2rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Main content should take available space, pushing footer down */
+.container-fluid {
+    flex: 1;
 }

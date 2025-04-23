@@ -227,16 +227,17 @@ class MotorcycleViewController {
     activateTurnSignal(direction) {
         if (!this.indicatorLeft || !this.indicatorRight) return;
         
-        // Reset both indicators first
+        // Always reset both indicators first
         this.indicatorLeft.classList.remove('active');
         this.indicatorRight.classList.remove('active');
         
-        // Activate the requested direction
+        // Activate the requested direction only if direction is specified
         if (direction === 'left') {
             this.indicatorLeft.classList.add('active');
         } else if (direction === 'right') {
             this.indicatorRight.classList.add('active');
         }
+        // For null/center, both indicators remain inactive (already handled by removing 'active' class above)
         
         this.currentTurnDirection = direction;
     }
@@ -671,7 +672,98 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialFuel = 60 + Math.random() * 30;
         window.motorcycleView.updateFuelLevel(initialFuel);
     }
+
+    // Add the mode toggle buttons to the UI
+    addModeToggleButtons();
+    
+    // Set the initial mode based on localStorage or default to sunny
+    const savedMode = localStorage.getItem('motorcycle-environment-mode') || 'sunny';
+    setEnvironmentMode(savedMode);
+    updateActiveButton(`${savedMode}-mode-btn`);
+    
+    // Also update the buttons when page loads
+    setTimeout(() => {
+        const activeMode = localStorage.getItem('motorcycle-environment-mode') || 'sunny';
+        updateActiveButton(`${activeMode}-mode-btn`);
+    }, 500);
 });
+
+// Fix the placement of mode switching buttons
+
+// Update the mode toggle buttons placement for better visibility
+function addModeToggleButtons() {
+    // First, check if the buttons already exist
+    if (document.querySelector('.mode-toggle-container')) {
+        return; // Buttons already added
+    }
+    
+    // Create a more prominent container for the mode buttons
+    const modeContainer = document.createElement('div');
+    modeContainer.className = 'mode-toggle-container';
+    modeContainer.innerHTML = `
+        <div class="mode-toggle-header">Environment</div>
+        <div class="mode-toggle-buttons">
+            <button class="mode-btn sunny-btn active" id="sunny-mode-btn" title="Sunny Mode">
+                <i class="bi bi-brightness-high-fill"></i>
+            </button>
+            <button class="mode-btn rainy-btn" id="rainy-mode-btn" title="Rainy Mode">
+                <i class="bi bi-cloud-rain-fill"></i>
+            </button>
+            <button class="mode-btn night-btn" id="night-mode-btn" title="Night Mode">
+                <i class="bi bi-moon-stars-fill"></i>
+            </button>
+        </div>
+    `;
+    
+    // Insert the mode container directly into the motorcycle view
+    const motorcycleView = document.getElementById('motorcycle-view');
+    if (motorcycleView) {
+        motorcycleView.appendChild(modeContainer);
+        
+        // Add event listeners
+        document.getElementById('sunny-mode-btn').addEventListener('click', () => {
+            setEnvironmentMode('sunny');
+            updateActiveButton('sunny-mode-btn');
+        });
+        
+        document.getElementById('rainy-mode-btn').addEventListener('click', () => {
+            setEnvironmentMode('rainy');
+            updateActiveButton('rainy-mode-btn');
+        });
+        
+        document.getElementById('night-mode-btn').addEventListener('click', () => {
+            setEnvironmentMode('night');
+            updateActiveButton('night-mode-btn');
+        });
+    }
+}
+
+function updateActiveButton(activeButtonId) {
+    // Remove active class from all buttons
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Add active class to the clicked button
+    document.getElementById(activeButtonId).classList.add('active');
+}
+
+function setEnvironmentMode(mode) {
+    // Create and dispatch custom event for the motorcycle view
+    const event = new CustomEvent('motorcycle:environment', {
+        detail: { 
+            isNight: mode === 'night',
+            weather: mode === 'rainy' ? 'rain' : 'clear'
+        }
+    });
+    
+    document.dispatchEvent(event);
+    
+    // Save the mode preference to localStorage
+    localStorage.setItem('motorcycle-environment-mode', mode);
+}
+
+// Existing motorcycle view code will handle the custom event
 
 // Update motorcycle speed from main simulation.js
 function updateMotorcycleSpeed(speed) {

@@ -425,6 +425,7 @@
     justify-content: space-between;
     width: 80%;
     top: 20px;
+    z-index: 10; /* Higher z-index to ensure indicators are on top */
 }
 
 .indicator {
@@ -436,6 +437,8 @@
 
 .indicator.left-turn {
     margin-right: 120px;
+    margin-left: 120px; /* Add left margin to move it away from the panel */
+    position: relative; /* Ensure proper stacking context */
 }
 
 .indicator.right-turn {
@@ -682,12 +685,14 @@
     color: #ff9800;
 }
 
-/* Digital right-side meter panel */
+/* Fix the digital panel positioning to move it to mid-left area */
+
 .digital-panel {
     position: absolute;
-    bottom: 30px;
-    left: 20px; /* Move to left side of dashboard */
-    width: 100px;
+    left: 20px;
+    top: 50%; /* Position in the middle vertically */
+    transform: translateY(-50%); /* Center it vertically */
+    width: 90px;
     padding: 5px;
     background: rgba(20, 20, 20, 0.8);
     border-radius: 5px;
@@ -696,7 +701,15 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    z-index: 11; /* Above dashboard */
+    z-index: 5; /* Ensure proper layering */
+}
+
+/* Add a bit more visibility to the panel values */
+.panel-value {
+    font-size: 0.95rem;
+    color: #ff8800;
+    text-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
+    font-weight: bold;
 }
 
 .panel-item {
@@ -736,6 +749,83 @@
     text-shadow: 0 0 5px rgba(244, 67, 54, 0.5);
 }
 
+/* Add styles for mode toggle buttons */
+
+.mode-toggle-container {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+.mode-toggle-container .btn-group {
+    display: flex;
+}
+
+.mode-toggle-container .btn {
+    flex: 1;
+    transition: all 0.3s ease;
+}
+
+/* Style for buttons */
+.mode-toggle-container .btn-outline-warning.active {
+    background-color: #ffc107;
+    color: #000;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
+.mode-toggle-container .btn-outline-primary.active {
+    background-color: #0d6efd;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.5);
+}
+
+.mode-toggle-container .btn-outline-dark.active {
+    background-color: #212529;
+    color: #fff;
+    box-shadow: 0 0 10px rgba(33, 37, 41, 0.5);
+}
+
+/* Weather animations for raindrops */
+@keyframes rainfall {
+    from { transform: translateY(0) translateX(0); }
+    to { transform: translateY(400px) translateX(-100px); }
+}
+
+.raindrop {
+    position: absolute;
+    width: 2px;
+    height: 20px;
+    background: rgba(200, 200, 255, 0.6);
+    top: -20px;
+    animation: rainfall 1s linear infinite;
+}
+
+/* Improve night mode styling */
+.night-mode {
+    background: linear-gradient(to bottom, 
+        #0c1445 0%, /* Deep blue night sky */
+        #1a2252 30%, /* Medium blue night sky */
+        #29303d 50%, /* Dark horizon */
+        #333 55%,    /* Road transition */
+        #222 60%,    /* Road color */
+        #111 100%) !important; /* Dark road */
+}
+
+.night-mode .headlight {
+    opacity: 1;
+    box-shadow: 0 0 60px rgba(255, 255, 200, 0.8);
+}
+
+.night-mode .headlight-beam {
+    opacity: 0.9;
+    height: 500px;
+}
+
+.night-mode .sky-object {
+    background: #E6E6E6 !important; /* Moon color */
+    box-shadow: 0 0 40px rgba(200, 200, 255, 0.6) !important;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
     .speedometer {
@@ -749,5 +839,88 @@
     
     .mountain {
         width: 200px;
+    }
+}
+
+/* Add new styles for mode toggle buttons */
+
+/* Mode toggle container - positioned at the top right of the motorcycle view */
+.mode-toggle-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px;
+    border-radius: 8px;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.mode-toggle-header {
+    color: white;
+    font-size: 12px;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.mode-toggle-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* Individual mode buttons */
+.mode-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.4);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mode-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Active state for each button type */
+.mode-btn.sunny-btn.active {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #ffd54f;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.7);
+}
+
+.mode-btn.rainy-btn.active {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #90caf9;
+    box-shadow: 0 0 10px rgba(13, 110, 253, 0.7);
+}
+
+.mode-btn.night-btn.active {
+    background-color: #212529;
+    color: #e1e1e1;
+    border-color: #5c6bc0;
+    box-shadow: 0 0 10px rgba(92, 107, 192, 0.7);
+}
+
+/* For smaller screens, adjust button size */
+@media (max-width: 768px) {
+    .mode-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
     }
 }
