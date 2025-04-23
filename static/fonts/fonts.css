@@ -1,0 +1,9 @@
+/* Digital font for motorcycle dashboard */
+@font-face {
+    font-family: 'Digital-7';
+    src: url('https://cdn.jsdelivr.net/gh/min1512/fonts@main/digital-7.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');

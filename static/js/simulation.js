@@ -75,10 +75,35 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize road animation
     function updateRoadLines() {
         const roadLines = document.querySelectorAll('.road-line');
+        const headlight = document.querySelector('.headlight');
+        const headlightBeam = document.querySelector('.headlight-beam');
+        
+        // Adjust road lines animation speed based on current speed
         roadLines.forEach(line => {
-            // Adjust animation speed based on current speed
-            line.style.animationDuration = (2 - currentSpeed/60) + 's';
+            // Faster animation for higher speeds
+            const duration = Math.max(0.2, (2 - currentSpeed/60)) + 's';
+            line.style.animationDuration = duration;
         });
+        
+        // Adjust headlight brightness based on speed
+        if (headlight && headlightBeam) {
+            // Brighter headlight and longer beam at higher speeds
+            const intensity = 0.7 + (currentSpeed / 120) * 0.3;
+            const beamLength = 300 + (currentSpeed * 3);
+            
+            headlight.style.opacity = intensity;
+            headlightBeam.style.height = `${beamLength}px`;
+            
+            // Add slight shake effect at high speeds
+            if (currentSpeed > 80) {
+                const shake = (Math.random() - 0.5) * (currentSpeed / 120);
+                document.querySelector('.motorcycle-handlebars').style.transform = 
+                    `translateX(calc(-50% + ${shake}px))`;
+            } else {
+                document.querySelector('.motorcycle-handlebars').style.transform = 
+                    'translateX(-50%)';
+            }
+        }
     }
     
     // Update UI with current simulation state

@@ -1,0 +1,753 @@
+/* Realistic Motorcycle View */
+
+/* Main container with a natural perspective */
+#motorcycle-view {
+    height: 350px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    perspective: 1000px;
+    background: linear-gradient(to bottom, 
+        #87CEEB 0%, /* Sky blue */
+        #6495ED 30%, /* Cornflower blue */
+        #7B8C95 50%, /* Horizon gray */
+        #3F4E56 55%, /* Dark horizon */
+        #444444 60%, /* Road start */
+        #333333 100%); /* Road end */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    border-radius: 8px;
+}
+
+/* Motorcycle windshield reflection */
+.windshield-reflection {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 70%;
+    background: radial-gradient(ellipse at center, 
+        rgba(255,255,255,0.2) 0%, 
+        rgba(255,255,255,0) 70%);
+    pointer-events: none;
+    z-index: 5;
+    opacity: 0.6;
+}
+
+/* Realistic road with perspective */
+.road-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 45%;
+    perspective: 800px;
+    transform-style: preserve-3d;
+    overflow: hidden;
+}
+
+.road {
+    position: absolute;
+    bottom: -50px;
+    width: 100%;
+    height: 150%;
+    background-color: #333333;
+    transform: rotateX(65deg);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    background-image: 
+        linear-gradient(to right, 
+            rgba(255,255,255,0) 0%, 
+            rgba(255,255,255,0) 48%, 
+            rgba(255,255,255,0.8) 50%, 
+            rgba(255,255,255,0) 52%, 
+            rgba(255,255,255,0) 100%);
+}
+
+/* Road texture and details */
+.road::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-image: 
+        linear-gradient(to right, 
+            rgba(255,255,255,0.8) 1%, 
+            rgba(255,255,255,0) 2%, 
+            rgba(255,255,255,0) 98%, 
+            rgba(255,255,255,0.8) 99%);
+}
+
+.road::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background-image: url('/static/img/road-texture.png');
+    opacity: 0.3;
+}
+
+/* Animated road markings */
+.road-line {
+    position: absolute;
+    width: 10px;
+    height: 60px;
+    background-color: white;
+    left: 50%;
+    margin-left: -5px;
+    animation: roadLineAnimation 1s linear infinite;
+}
+
+.road-line:nth-child(1) { top: -100px; }
+.road-line:nth-child(2) { top: 0px; }
+.road-line:nth-child(3) { top: 100px; }
+.road-line:nth-child(4) { top: 200px; }
+
+@keyframes roadLineAnimation {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(200px); }
+}
+
+/* Motorcycle dashboard */
+.motorcycle-dashboard {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 130px;
+    background: linear-gradient(to bottom, rgba(30, 30, 30, 0.95), #111);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-top-left-radius: 200px;
+    border-top-right-radius: 200px;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+}
+
+/* Realistic motorcycle handlebars */
+.motorcycle-handlebars {
+    position: absolute;
+    bottom: 115px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 260px;
+    height: 45px;
+    background: linear-gradient(to bottom, #2e2e2e, #1a1a1a);
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.7), inset 0 2px 3px rgba(255,255,255,0.1);
+    z-index: 5;
+}
+
+/* Handlebar grips */
+.motorcycle-handlebars::before, 
+.motorcycle-handlebars::after {
+    content: '';
+    position: absolute;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: linear-gradient(145deg, #111, #222);
+    border: 3px solid #333;
+    box-shadow: inset 0 -2px 5px rgba(0,0,0,0.5);
+    top: 5px;
+}
+
+.motorcycle-handlebars::before {
+    left: 10px;
+}
+
+.motorcycle-handlebars::after {
+    right: 10px;
+}
+
+/* Controls on handlebars */
+.handlebar-control {
+    position: absolute;
+    top: 18px;
+    height: 15px;
+    width: 40px;
+    background: #222;
+    border-radius: 5px;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.left-control {
+    left: 55px;
+}
+
+.right-control {
+    right: 55px;
+}
+
+/* Fix mirrors with improved alignment */
+.mirror {
+    position: absolute;
+    width: 15px;
+    height: 65px;
+    background: linear-gradient(to bottom, #444, #222);
+    border-radius: 4px;
+    bottom: 135px; /* Adjusted position */
+    z-index: 4;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+}
+
+.mirror::after {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 20px;
+    background: linear-gradient(145deg, #888, #777);
+    border-radius: 3px;
+    border: 2px solid #444;
+    box-shadow: inset 0 0 5px rgba(255,255,255,0.3);
+    top: -18px; /* Better positioned reflection */
+    left: -8px;
+    transform: rotate(0deg); /* No rotation - straight mirror */
+}
+
+.mirror.left {
+    left: calc(50% - 130px);
+    transform: rotate(-22deg) translateZ(0); /* 3D transform for better perspective */
+}
+
+.mirror.right {
+    right: calc(50% - 130px);
+    transform: rotate(22deg) translateZ(0); /* 3D transform for better perspective */
+}
+
+/* Realistic headlight */
+.headlight {
+    position: absolute;
+    bottom: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 25px;
+    background: linear-gradient(to bottom, #FFD700, #B8860B);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow: 
+        0 0 40px rgba(255, 255, 200, 0.6),
+        inset 0 0 10px rgba(255, 255, 255, 0.8);
+    clip-path: polygon(0 100%, 100% 100%, 80% 0, 20% 0);
+    z-index: 4;
+    opacity: 0.9;
+}
+
+.headlight::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    filter: blur(2px);
+}
+
+/* Headlight beam effect */
+.headlight-beam {
+    position: absolute;
+    width: 200px;
+    height: 400px;
+    bottom: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: radial-gradient(
+        ellipse at top,
+        rgba(255,255,200,0.3) 0%, 
+        rgba(255,255,200,0) 70%
+    );
+    z-index: 2;
+    clip-path: polygon(40% 0, 60% 0, 100% 100%, 0% 100%);
+    opacity: 0.7;
+    animation: beamFlicker 10s infinite;
+}
+
+@keyframes beamFlicker {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.9; }
+    75% { opacity: 0.6; }
+}
+
+/* Speedometer with realistic glass effect */
+.speedometer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background: #0a0a0a;
+    border-radius: 50%;
+    width: 140px;
+    height: 140px;
+    padding: 15px;
+    box-shadow: 
+        0 0 15px rgba(0, 0, 0, 0.4), 
+        inset 0 0 30px rgba(0, 0, 0, 0.8);
+    border: 3px solid #333;
+    position: relative;
+    top: -25px;
+    transform: perspective(400px) rotateX(10deg);
+    overflow: hidden;
+}
+
+/* Glass effect on speedometer */
+.speedometer::before {
+    content: '';
+    position: absolute;
+    width: 140px;
+    height: 70px;
+    border-radius: 70px 70px 0 0;
+    background: linear-gradient(to bottom, 
+        rgba(255,255,255,0.12) 0%, 
+        rgba(255,255,255,0.05) 30%,
+        rgba(255,255,255,0) 60%);
+    top: 0;
+    left: 0;
+    transform: rotate(0deg);
+}
+
+.speedometer::after {
+    content: '';
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Tick marks around speedometer */
+.speedometer-ticks {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.speedometer-tick {
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    transform-origin: center 60px;
+    left: calc(50% - 1px);
+    top: 12px;
+}
+
+/* Generate 12 tick marks around the speedometer */
+.speedometer-tick:nth-child(1) { transform: rotate(0deg); }
+.speedometer-tick:nth-child(2) { transform: rotate(30deg); }
+.speedometer-tick:nth-child(3) { transform: rotate(60deg); }
+.speedometer-tick:nth-child(4) { transform: rotate(90deg); }
+.speedometer-tick:nth-child(5) { transform: rotate(120deg); }
+.speedometer-tick:nth-child(6) { transform: rotate(150deg); }
+.speedometer-tick:nth-child(7) { transform: rotate(180deg); }
+.speedometer-tick:nth-child(8) { transform: rotate(210deg); }
+.speedometer-tick:nth-child(9) { transform: rotate(240deg); }
+.speedometer-tick:nth-child(10) { transform: rotate(270deg); }
+.speedometer-tick:nth-child(11) { transform: rotate(300deg); }
+.speedometer-tick:nth-child(12) { transform: rotate(330deg); }
+
+/* Major tick marks */
+.speedometer-tick:nth-child(1),
+.speedometer-tick:nth-child(4),
+.speedometer-tick:nth-child(7),
+.speedometer-tick:nth-child(10) {
+    height: 12px;
+    background: rgba(255, 255, 255, 0.9);
+}
+
+.speedometer-needle {
+    position: absolute;
+    width: 4px;
+    height: 60px;
+    background: linear-gradient(to top, #ff3e3e 60%, #8c0000 100%);
+    left: calc(50% - 2px);
+    bottom: 50%;
+    transform-origin: bottom center;
+    transform: rotate(0deg);
+    border-radius: 2px 2px 0 0;
+    box-shadow: 0 0 5px rgba(255, 0, 0, 0.5);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 1;
+}
+
+.speedometer-center {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: radial-gradient(circle, #333, #222);
+    border: 2px solid #444;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    z-index: 2;
+}
+
+.speedometer-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    font-family: 'Digital-7', 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(255, 136, 0, 0.6);
+    margin-top: 15px;
+    z-index: 3;
+    color: #ff8800; /* Amber color typical of motorcycle displays */
+}
+
+.speedometer-unit {
+    font-size: 0.9rem;
+    opacity: 0.9;
+    font-weight: 300;
+    color: #ff8800;
+    letter-spacing: 1px;
+    margin-top: -5px;
+    z-index: 3;
+}
+
+/* Turn indicators with realistic styling */
+.indicators {
+    position: absolute;
+    display: flex;
+    justify-content: space-between;
+    width: 80%;
+    top: 20px;
+}
+
+.indicator {
+    font-size: 1.6rem;
+    color: #2d2d2d;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.7));
+}
+
+.indicator.left-turn {
+    margin-right: 120px;
+}
+
+.indicator.right-turn {
+    margin-left: 120px;
+}
+
+.indicator i {
+    /* Change to use triangle shape instead of circular */
+    padding: 6px;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+    background: #222;
+    border: 1px solid #444;
+    border-radius: 3px;
+}
+
+.indicator.active {
+    color: #4CAF50;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+    animation: blink 1s infinite;
+}
+
+.indicator.active i {
+    background: #2e4a2f;
+    color: #4cff54;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    border-color: #4CAF50;
+}
+
+/* Motorcycle body hints */
+.motorcycle-body {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 60px;
+    background: linear-gradient(to bottom, #2a2a2a, #111);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.7);
+    z-index: 3;
+}
+
+/* Landscape elements */
+.mountain {
+    position: absolute;
+    width: 300px;
+    height: 100px;
+    background: linear-gradient(to bottom, #7b8c95, #3f4e56);
+    bottom: 40%;
+    z-index: 1;
+    clip-path: polygon(0% 100%, 30% 40%, 50% 80%, 70% 20%, 100% 100%);
+}
+
+.mountain-1 {
+    left: -50px;
+}
+
+.mountain-2 {
+    right: -50px;
+    height: 80px;
+    clip-path: polygon(0% 100%, 20% 60%, 40% 80%, 70% 30%, 100% 100%);
+}
+
+/* Trees on roadside */
+.tree {
+    position: absolute;
+    bottom: 40%;
+    z-index: 1;
+}
+
+.tree-1 { left: 15%; height: 70px; }
+.tree-2 { left: 85%; height: 60px; }
+
+.tree::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 20px;
+    background: #3e2c1f;
+}
+
+.tree::after {
+    content: '';
+    position: absolute;
+    bottom: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 50px;
+    background: #1e5631;
+    border-radius: 50% 50% 10% 10%;
+}
+
+.tree-1::after {
+    height: 40px;
+    width: 25px;
+}
+
+/* Weather effects */
+.weather-effects {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    z-index: 6;
+}
+
+/* Sun/moon */
+.sky-object {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    top: 30px;
+    right: 60px;
+    border-radius: 50%;
+    background: #FDB813;
+    box-shadow: 0 0 40px rgba(253, 184, 19, 0.5);
+}
+
+/* Additional animations for more realism */
+@keyframes rumble {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    25% { transform: translateX(-50.2%) translateY(0.3px); }
+    50% { transform: translateX(-49.8%) translateY(-0.3px); }
+    75% { transform: translateX(-50.1%) translateY(0.2px); }
+}
+
+/* Apply subtle animation to motorcycle body at higher speeds */
+.motorcycle-body.high-speed {
+    animation: rumble 0.1s infinite;
+}
+
+/* New fuel gauge and additional meters */
+.fuel-gauge {
+    position: absolute;
+    right: 25px;
+    bottom: 170px;
+    width: 80px;
+    height: 80px;
+    background: #111;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.7), inset 0 1px 3px rgba(80, 80, 80, 0.5);
+    border: 3px solid #333;
+    z-index: 7;
+    overflow: hidden;
+}
+
+.fuel-gauge::before {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 30px;
+    border-radius: 30px 30px 0 0;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    top: 5px;
+    left: 5px;
+    transform: rotate(-30deg);
+}
+
+.fuel-indicator {
+    position: absolute;
+    width: 3px;
+    height: 28px;
+    background: linear-gradient(to top, #ff3e3e 60%, #8c0000 100%);
+    left: calc(50% - 1.5px);
+    bottom: 50%;
+    transform-origin: bottom center;
+    transform: rotate(-45deg); /* Start at 3/4 tank */
+    border-radius: 2px 2px 0 0;
+    box-shadow: 0 0 3px rgba(255, 0, 0, 0.5);
+    z-index: 2;
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.fuel-center {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: radial-gradient(circle, #ddd, #999);
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    z-index: 3;
+}
+
+.fuel-label {
+    position: absolute;
+    top: 20px;
+    font-size: 0.75rem;
+    color: white;
+    text-transform: uppercase;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-shadow: 0 0 2px rgba(255, 255, 255, 0.4);
+}
+
+.fuel-ticks {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+}
+
+.fuel-tick {
+    position: absolute;
+    width: 2px;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.7);
+    transform-origin: center 30px;
+    left: calc(50% - 1px);
+    top: 10px;
+}
+
+.fuel-tick:nth-child(1) { transform: rotate(-90deg); background: rgba(255, 0, 0, 0.8); } /* Empty - red */
+.fuel-tick:nth-child(2) { transform: rotate(-45deg); background: rgba(255, 165, 0, 0.8); } /* Half - orange */
+.fuel-tick:nth-child(3) { transform: rotate(0deg); } /* Full - white */
+
+.fuel-symbol {
+    position: absolute;
+    bottom: 15px;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.fuel-symbol i {
+    font-size: 0.9rem;
+    color: #ff9800;
+}
+
+/* Digital right-side meter panel */
+.digital-panel {
+    position: absolute;
+    bottom: 30px;
+    left: 20px; /* Move to left side of dashboard */
+    width: 100px;
+    padding: 5px;
+    background: rgba(20, 20, 20, 0.8);
+    border-radius: 5px;
+    border: 1px solid #444;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.5), inset 0 0 5px rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 11; /* Above dashboard */
+}
+
+.panel-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Digital-7', 'Orbitron', sans-serif;
+    border-bottom: 1px solid rgba(100, 100, 100, 0.3);
+    padding-bottom: 3px;
+}
+
+.panel-item:last-child {
+    border-bottom: none;
+}
+
+.panel-label {
+    font-size: 0.65rem;
+    color: rgba(200, 200, 200, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1px;
+}
+
+.panel-value {
+    font-size: 1rem;
+    color: #ff8800; /* Change to amber color more common on motorcycle displays */
+    text-shadow: 0 0 5px rgba(255, 136, 0, 0.5);
+}
+
+.panel-value.warning {
+    color: #ff9800;
+    text-shadow: 0 0 5px rgba(255, 152, 0, 0.5);
+}
+
+.panel-value.danger {
+    color: #f44336;
+    text-shadow: 0 0 5px rgba(244, 67, 54, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .speedometer {
+        width: 120px;
+        height: 120px;
+    }
+    
+    .speedometer-value {
+        font-size: 2rem;
+    }
+    
+    .mountain {
+        width: 200px;
+    }
+}

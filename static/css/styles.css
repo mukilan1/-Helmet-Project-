@@ -3,18 +3,16 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Motorcycle View */
+/* Enhanced Motorcycle View */
 #motorcycle-view {
-    height: 300px;
+    height: 350px;
     width: 100%;
-    background-color: #87CEEB;
     position: relative;
     overflow: hidden;
-    perspective: 500px;
-}
-
-.bg-motorcycle {
-    background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #4D4D4D 60%, #4D4D4D 100%);
+    perspective: 800px;
+    background: linear-gradient(to bottom, #87CEEB 0%, #6495ED 40%, #4682B4 60%, #333333 60%, #1a1a1a 100%);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    border-radius: 8px;
 }
 
 .road-container {
@@ -23,7 +21,7 @@ body {
     left: 0;
     width: 100%;
     height: 40%;
-    perspective: 200px;
+    perspective: 400px;
     transform-style: preserve-3d;
 }
 
@@ -31,32 +29,54 @@ body {
     position: absolute;
     width: 100%;
     height: 100%;
-    background-color: #4D4D4D;
+    background-color: #333333;
     transform: rotateX(60deg);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     overflow: hidden;
+    background-image: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0) 48%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0) 52%, rgba(255,255,255,0) 100%);
 }
 
 .road-line {
     position: absolute;
     width: 10px;
-    height: 40px;
+    height: 60px;
     background-color: white;
+    left: 50%;
+    margin-left: -5px;
     animation: roadLineAnimation 1s linear infinite;
 }
 
 .road-line:nth-child(1) {
-    top: -50px;
+    top: -100px;
 }
 
 .road-line:nth-child(2) {
-    top: 50px;
+    top: 0px;
 }
 
 .road-line:nth-child(3) {
-    top: 150px;
+    top: 100px;
+}
+
+.road::before, .road::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+}
+
+.road::before {
+    /* Add shoulder markings */
+    background-image: 
+        linear-gradient(to right, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.8) 2%, rgba(255,255,255,0) 3%, rgba(255,255,255,0) 97%, rgba(255,255,255,0.8) 98%, rgba(255,255,255,0.8) 100%);
+}
+
+.road::after {
+    /* Add texture */
+    background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0h6v6H0z' fill-opacity='.05' fill='%23FFF'/%3E%3C/svg%3E");
 }
 
 @keyframes roadLineAnimation {
@@ -73,13 +93,15 @@ body {
     bottom: 0;
     left: 0;
     width: 100%;
-    height: 80px;
-    background-color: #222;
+    height: 100px;
+    background: linear-gradient(to bottom, rgba(20, 20, 20, 0.9), #111);
     display: flex;
     justify-content: center;
     align-items: center;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
+    border-top-left-radius: 60px;
+    border-top-right-radius: 60px;
+    box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.4);
+    z-index: 10;
 }
 
 .speedometer {
@@ -87,16 +109,45 @@ body {
     flex-direction: column;
     align-items: center;
     color: white;
+    background: radial-gradient(circle, #222 0%, #111 70%);
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+    padding: 15px;
+    box-shadow: 0 0 15px rgba(0, 255, 50, 0.2), 
+                inset 0 0 20px rgba(0, 0, 0, 0.8);
+    border: 2px solid #333;
+    position: relative;
+    top: -20px;
+}
+
+.speedometer::before {
+    content: '';
+    position: absolute;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: transparent;
+    border: 2px solid rgba(0, 255, 50, 0.2);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
 .speedometer-value {
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: bold;
+    font-family: 'Digital-7', 'Orbitron', sans-serif;
+    text-shadow: 0 0 10px rgba(0, 255, 50, 0.8);
+    margin-top: 10px;
 }
 
 .speedometer-unit {
     font-size: 0.8rem;
     opacity: 0.8;
+    font-weight: 300;
+    letter-spacing: 1px;
+    margin-top: -5px;
 }
 
 .indicators {
@@ -104,21 +155,128 @@ body {
     display: flex;
     justify-content: space-between;
     width: 80%;
+    top: 25px;
 }
 
 .indicator {
-    font-size: 1.5rem;
-    color: #333;
+    font-size: 2rem;
+    color: #444;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.5));
+}
+
+.indicator.left-turn {
+    margin-right: 120px;
+}
+
+.indicator.right-turn {
+    margin-left: 120px;
 }
 
 .indicator.active {
-    color: green;
+    color: #4CAF50;
+    text-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
     animation: blink 1s infinite;
 }
 
 @keyframes blink {
     0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
+    50% { opacity: 0.2; }
+}
+
+/* Add motorcycle handlebars */
+.motorcycle-handlebars {
+    position: absolute;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+    height: 40px;
+    background: #222;
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    z-index: 5;
+}
+
+.motorcycle-handlebars::before, 
+.motorcycle-handlebars::after {
+    content: '';
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #111;
+    border: 3px solid #333;
+    top: 5px;
+}
+
+.motorcycle-handlebars::before {
+    left: 10px;
+}
+
+.motorcycle-handlebars::after {
+    right: 10px;
+}
+
+/* Add side mirrors */
+.mirror {
+    position: absolute;
+    width: 15px;
+    height: 25px;
+    background: #444;
+    border-radius: 4px;
+    bottom: 105px;
+    z-index: 4;
+}
+
+.mirror::after {
+    content: '';
+    position: absolute;
+    width: 25px;
+    height: 15px;
+    background: #aaa;
+    border-radius: 3px;
+    border: 2px solid #444;
+    top: -15px;
+    left: -5px;
+}
+
+.mirror.left {
+    left: calc(50% - 110px);
+    transform: rotate(-15deg);
+}
+
+.mirror.right {
+    right: calc(50% - 110px);
+    transform: rotate(15deg);
+}
+
+/* Add headlight effect */
+.headlight {
+    position: absolute;
+    bottom: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 20px;
+    background: radial-gradient(ellipse at center, #FFFA99 0%, #FFD700 70%, #B8860B 100%);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow: 0 0 40px rgba(255, 255, 200, 0.8);
+    clip-path: polygon(0 100%, 100% 100%, 80% 0, 20% 0);
+    z-index: 4;
+    opacity: 0.9;
+}
+
+.headlight-beam {
+    position: absolute;
+    width: 200px;
+    height: 400px;
+    bottom: 65px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(to bottom, rgba(255,255,200,0.3) 0%, rgba(255,255,200,0) 100%);
+    z-index: 2;
+    clip-path: polygon(40% 0, 60% 0, 100% 100%, 0% 100%);
 }
 
 /* Helmet Display */
