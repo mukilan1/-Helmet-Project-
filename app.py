@@ -10,11 +10,15 @@ import threading
 import base64
 from datetime import datetime
 from object_detection import ObjectDetector
+from integrated_voice_assistant import IntegratedVoiceAssistant
 
 app = Flask(__name__)
 
 # Initialize the object detector
 object_detector = ObjectDetector()
+
+# Initialize the integrated voice assistant
+voice_assistant = IntegratedVoiceAssistant(app)
 
 # For webcam capture if using local camera
 webcam = None
@@ -659,6 +663,50 @@ def get_camera_sensors():
         'sensors': sensor_data
     })
 
+@app.route('/api/voice_assistant/start', methods=['POST'])
+def start_voice_assistant():
+    """Start the integrated voice assistant"""
+    success = voice_assistant.start()
+    return jsonify({'success': success, 'message': 'Voice assistant started' if success else 'Already running'})
+
+@app.route('/api/voice_assistant/stop', methods=['POST'])
+def stop_voice_assistant():
+    """Stop the integrated voice assistant"""
+    success = voice_assistant.stop()
+    return jsonify({'success': success, 'message': 'Voice assistant stopped' if success else 'Not running'})
+
+@app.route('/api/voice_assistant/status', methods=['GET'])
+def check_voice_assistant_status():
+    """Check if the voice assistant is running"""
+    if not hasattr(app, 'voice_assistant'):
+        return jsonify({'running': False})
+    return jsonify({'running': voice_assistant.is_running})
+
+# Add this route to provide connection information including IP
+@app.route('/api/voice_assistant/connection_info', methods=['GET'])
+def voice_assistant_connection_info():
+    """Return connection information including IP address"""
+    import socket
+    
+    # Try to get local IP address
+    try:
+        # Get local hostname
+        hostname = socket.gethostname()
+        # Get local IP address
+        ip_address = socket.gethostbyname(hostname)
+    except:
+        ip_address = "127.0.0.1"  # Default to localhost if we can't get the IP
+    
+    # Get the port the app is running on
+    port = request.host.split(':')[-1] if ':' in request.host else "5000"
+    
+    return jsonify({
+        'ip': ip_address,
+        'port': port,
+        'hostname': hostname if 'hostname' in locals() else 'localhost',
+        'running': voice_assistant.is_running
+    })
+
 def find_free_port(start_port=5000, max_attempts=20):
     """Find a free port starting from start_port"""
     import socket
@@ -674,6 +722,11 @@ def find_free_port(start_port=5000, max_attempts=20):
     # If we can't find a free port in the range, try a high random port
     import random
     return random.randint(8000, 9000)
+
+@app.before_first_request
+def start_voice_assistant_on_startup():
+    """Start the voice assistant when the app starts up"""
+    voice_assistant.start()
 
 if __name__ == '__main__':
     # Always find a free port first rather than trying default and failing

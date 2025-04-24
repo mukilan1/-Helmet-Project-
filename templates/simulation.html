@@ -456,7 +456,9 @@
     <script src="{{ url_for('static', filename='js/object-detection.js') }}"></script>
     <script src="{{ url_for('static', filename='js/motorcycle-view.js') }}"></script>
     <script src="{{ url_for('static', filename='js/simulation.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/voice-assistant.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Direct HTTP voice assistant - no Socket.IO -->
+    <script src="{{ url_for('static', filename='js/direct-voice-assistant.js') }}"></script>
 </body>
 </html>
