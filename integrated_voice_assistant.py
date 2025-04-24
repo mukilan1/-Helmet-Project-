@@ -29,6 +29,19 @@ class IntegratedVoiceAssistant:
         @app.route('/api/voice_assistant/status', methods=['GET'])
         def voice_status():
             return jsonify({'running': self.is_running})
+        
+        # Add transcript storage
+        self.latest_transcript = ""
+        self.transcript_timestamp = 0
+        
+        # Register additional route for transcript
+        @app.route('/api/voice_assistant/transcript', methods=['GET'])
+        def get_transcript():
+            # Return the latest transcript with timestamp
+            return jsonify({
+                'transcript': self.latest_transcript,
+                'timestamp': self.transcript_timestamp
+            })
     
     def start(self):
         """Start the voice assistant in a background thread"""
@@ -54,25 +67,78 @@ class IntegratedVoiceAssistant:
         """Main loop for voice recognition"""
         print("Starting voice recognition loop")
         
+        # Initialize mic_index with a default value BEFORE the try block
+        mic_index = None  # Default to system default microphone
+        
+        # Ensure we have the microphone available
+        try:
+            # Test microphone before entering the loop
+            microphone_list = sr.Microphone.list_microphone_names()
+            print(f"Available microphones: {microphone_list}", flush=True)
+            
+            if not microphone_list:
+                print("ERROR: No microphones detected!", flush=True)
+                return
+                
+            # Try to set a specific microphone index if you're having issues
+            # You might need to try different indices based on your system
+            for i, name in enumerate(microphone_list):
+                print(f"Microphone {i}: {name}", flush=True)
+                # Prefer default mic or one with "default" in the name
+                if "default" in name.lower() or "built-in" in name.lower():
+                    mic_index = i
+                    print(f"Selected microphone: {name} (index {i})", flush=True)
+                    break
+        
+        except Exception as e:
+            print(f"Error detecting microphones: {e}", flush=True)
+            # Continue with default microphone (mic_index is still None here)
+        
+        # Main recognition loop  
         while self.is_running:
             try:
-                # Use microphone as source
-                with sr.Microphone() as source:
-                    print("Adjusting for ambient noise...")
-                    self.recognizer.adjust_for_ambient_noise(source, duration=0.5)
-                    print("Listening for wake word...")
+                # Use microphone as source, potentially with specific index
+                with sr.Microphone(device_index=mic_index) as source:
+                    print("Adjusting for ambient noise...", flush=True)
+                    # Use longer duration for better noise profile
+                    self.recognizer.adjust_for_ambient_noise(source, duration=1.0)
                     
-                    # Listen for audio
+                    # Use higher energy threshold if needed for better detection
+                    self.recognizer.energy_threshold = 400  # Increased from 300
+                    self.recognizer.dynamic_energy_adjustment_ratio = 1.5
+                    
+                    print(f"Listening for wake word... (Energy threshold: {self.recognizer.energy_threshold})", flush=True)
+                    
+                    # Listen for audio with more generous timeouts
                     try:
-                        audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
+                        audio = self.recognizer.listen(source, timeout=10, phrase_time_limit=10)
+                        print("Audio captured! Recognizing...", flush=True)
                     except Exception as e:
-                        print(f"Listen error: {e}")
+                        print(f"Listen error: {e}", flush=True)
                         continue
                     
                     try:
-                        # Recognize speech
-                        text = self.recognizer.recognize_google(audio)
-                        print(f"Heard: {text}")
+                        # Try multiple recognition services if Google fails
+                        try:
+                            text = self.recognizer.recognize_google(audio)
+                        except sr.RequestError:
+                            # Fallback to Sphinx for offline recognition
+                            try:
+                                print("Google recognition failed, trying Sphinx...", flush=True)
+                                text = self.recognizer.recognize_sphinx(audio)
+                            except:
+                                raise  # Re-raise if Sphinx also fails
+                        
+                        # Debug what was heard immediately
+                        print("\n" + "="*50, flush=True)
+                        print(f"HEARD TEXT: \"{text}\"", flush=True)
+                        print("="*50 + "\n", flush=True)
+                        
+                        # IMPORTANT: Always update transcript timestamp to a new value
+                        # to trigger frontend detection of changes
+                        self.latest_transcript = text
+                        self.transcript_timestamp = time.time()
+                        print(f"Updated transcript with timestamp: {self.transcript_timestamp}", flush=True)
                         
                         # Check for wake word
                         if self.wake_word.lower() in text.lower():
@@ -95,6 +161,7 @@ class IntegratedVoiceAssistant:
                     
                     except sr.UnknownValueError:
                         print("Could not understand audio")
+                        # Don't update transcript on failure
                     except sr.RequestError as e:
                         print(f"Google Speech Recognition service error: {e}")
                     except Exception as e:

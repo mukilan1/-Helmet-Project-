@@ -707,6 +707,68 @@ def voice_assistant_connection_info():
         'running': voice_assistant.is_running
     })
 
+# Add this route for microphone testing
+
+@app.route('/mic_test')
+def mic_test_page():
+    """Render the microphone test page"""
+    return render_template('mic_test.html')
+
+@app.route('/api/test_microphone', methods=['POST'])
+def test_microphone():
+    """Test if the microphone is working with speech recognition"""
+    import speech_recognition as sr
+    
+    output_lines = []
+    success = False
+    
+    try:
+        # Get available microphones
+        output_lines.append("Available microphones:")
+        mic_names = sr.Microphone.list_microphone_names()
+        for i, name in enumerate(mic_names):
+            output_lines.append(f"  Mic {i}: {name}")
+        
+        # Create a recognizer
+        r = sr.Recognizer()
+        r.energy_threshold = 400
+        
+        # Try to use the microphone
+        output_lines.append("\nAttempting to use microphone...")
+        with sr.Microphone() as source:
+            output_lines.append("Microphone activated successfully")
+            output_lines.append("Adjusting for ambient noise...")
+            r.adjust_for_ambient_noise(source, duration=1)
+            output_lines.append(f"Energy threshold set to {r.energy_threshold}")
+            
+            output_lines.append("\nListening for audio (speak now)...")
+            
+            try:
+                audio = r.listen(source, timeout=5, phrase_time_limit=5)
+                output_lines.append("Audio capture successful!")
+                
+                try:
+                    # Try to recognize speech
+                    output_lines.append("\nRecognizing speech...")
+                    text = r.recognize_google(audio)
+                    output_lines.append(f"SUCCESS! Recognized: \"{text}\"")
+                    success = True
+                except sr.UnknownValueError:
+                    output_lines.append("Could not understand audio (no speech detected)")
+                except sr.RequestError as e:
+                    output_lines.append(f"Could not request results from Google Speech Recognition service; {e}")
+            
+            except Exception as e:
+                output_lines.append(f"Error during audio capture: {e}")
+        
+    except Exception as e:
+        output_lines.append(f"Error during microphone test: {e}")
+    
+    return jsonify({
+        'success': success,
+        'details': '\n'.join(output_lines)
+    })
+
 def find_free_port(start_port=5000, max_attempts=20):
     """Find a free port starting from start_port"""
     import socket

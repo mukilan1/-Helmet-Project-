@@ -11,6 +11,15 @@ class DirectVoiceAssistant {
         this.sendCommandBtn = document.getElementById('send-command-btn');
         this.voiceToggleBtn = document.getElementById('voice-toggle-btn');
         
+        // Add transcript element or create if not found
+        this.transcriptElement = document.getElementById('voice-transcript');
+        if (!this.transcriptElement && this.voiceResponseElement) {
+            this.transcriptElement = document.createElement('div');
+            this.transcriptElement.id = 'voice-transcript';
+            this.transcriptElement.className = 'transcript-display mt-2 p-2 border rounded bg-light';
+            this.voiceResponseElement.parentNode.insertBefore(this.transcriptElement, this.voiceResponseElement.nextSibling);
+        }
+        
         // State
         this.isServerRunning = false;
         this.isProcessing = false;
@@ -20,6 +29,9 @@ class DirectVoiceAssistant {
         this.setupElements();
         this.setupEventListeners();
         this.checkServerStatus();
+        
+        // Start checking for transcript updates
+        this.startTranscriptPolling();
     }
     
     setupElements() {
@@ -255,6 +267,93 @@ class DirectVoiceAssistant {
         
         this.voiceResponseElement.innerHTML = '';
         this.voiceResponseElement.appendChild(p);
+    }
+    
+    // Add this method to poll for transcript updates
+    startTranscriptPolling() {
+        setInterval(() => {
+            if (this.isServerRunning) {
+                this.fetchLatestTranscript();
+            }
+        }, 1000); // Check every second
+    }
+
+    // Fix fetchLatestTranscript to more aggressively update on any changes
+    async fetchLatestTranscript() {
+        try {
+            const response = await fetch('/api/voice_assistant/transcript');
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Always update if there's a transcript, even if timestamp hasn't changed
+                if (data.transcript) {
+                    console.log("Transcript data:", data);
+                    
+                    if (data.transcript.trim() !== '') {
+                        // Show what was actually heard
+                        this.updateTranscript(data.transcript);
+                        
+                        // Update status indicator
+                        const statusBadge = document.getElementById('transcript-status');
+                        if (statusBadge) {
+                            statusBadge.textContent = 'Heard speech!';
+                            statusBadge.classList.remove('bg-info');
+                            statusBadge.classList.add('bg-success');
+                            
+                            // Reset after 2 seconds
+                            setTimeout(() => {
+                                statusBadge.textContent = 'Listening...';
+                                statusBadge.classList.remove('bg-success');
+                                statusBadge.classList.add('bg-info');
+                            }, 2000);
+                        }
+                    } else if (!document.querySelector('.transcript-item')) {
+                        // Only show listening message if no other transcript items exist
+                        this.updateTranscript('(listening...)');
+                    }
+                } else if (!document.querySelector('.transcript-item')) {
+                    // No transcript available, show listening message
+                    this.updateTranscript('(listening...)');
+                }
+            }
+        } catch (error) {
+            console.log('Error fetching transcript:', error);
+        }
+    }
+
+    // Update the updateTranscript method to make "listening" text white
+    updateTranscript(text) {
+        if (!this.transcriptElement) return;
+        
+        // Clear placeholder text if present
+        if (this.transcriptElement.querySelector('.text-muted')) {
+            this.transcriptElement.innerHTML = '';
+        }
+        
+        // Process text, even if it's the listening message
+        const transcriptItem = document.createElement('div');
+        transcriptItem.className = 'transcript-item';
+        
+        if (text.includes('listening')) {
+            // Make listening text WHITE as requested
+            transcriptItem.innerHTML = `<span class="text-white"><i class="bi bi-record-circle text-danger me-1"></i>${text}</span>`;
+            transcriptItem.style.opacity = '0.7';
+        } else {
+            // Keep recognized speech styling
+            transcriptItem.innerHTML = `<span class="text-warning fw-bold">Heard:</span> <span class="text-white">"${text}"</span>`;
+            transcriptItem.style.backgroundColor = 'rgba(0, 0, 0, 0.4)';
+            transcriptItem.style.padding = '6px 8px';
+            transcriptItem.style.borderRadius = '4px';
+            transcriptItem.style.marginBottom = '8px';
+        }
+        
+        // Add to transcript element and limit to last 5 items
+        this.transcriptElement.insertBefore(transcriptItem, this.transcriptElement.firstChild);
+        
+        // Keep only the last 5 items for cleaner UI
+        while (this.transcriptElement.children.length > 5) {
+            this.transcriptElement.removeChild(this.transcriptElement.lastChild);
+        }
     }
 }
 

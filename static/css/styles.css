@@ -629,3 +629,32 @@ footer {
     margin-left: 5px;
     font-size: 0.8rem;
 }
+
+/* Add these styles for the transcript display */
+.transcript-display {
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    padding: 5px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.transcript-item {
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    word-break: break-word;
+}
+
+.transcript-item:first-child {
+    font-weight: bold;
+    color: #7DF9FF; /* bright cyan color */
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+#transcript-status {
+    animation: pulse 2s infinite;
+}
