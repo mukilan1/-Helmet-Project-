@@ -17,6 +17,11 @@ A web-based simulation of a smart motorcycle helmet with integrated display and 
   - Control music playback status
 - Voice command testing through simulated voice assistant
 
+<img width="1279" alt="Screenshot 2025-05-11 at 8 52 00 AM" src="https://github.com/user-attachments/assets/ee25f054-f6a7-4427-b7cc-02ee7e4f6bc4" />
+<img width="1289" alt="Screenshot 2025-05-11 at 8 51 22 AM" src="https://github.com/user-attachments/assets/340e11f5-45b3-45d1-823f-5bbfa2e50aea" />
+<img width="1470" alt="Screenshot 2025-05-11 at 8 49 10 AM" src="https://github.com/user-attachments/assets/02f87216-d1b0-4646-ad93-e6a62e48ba26" />
+
+
 ## Installation
 
 1. Clone the repository
